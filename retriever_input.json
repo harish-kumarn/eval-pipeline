@@ -1,0 +1,34 @@
+{
+  "chunk1": {
+    "text": "# MARUYAMA\n\n## OWNER'S/OPERATOR'S MANUAL\n\n## PS30 Dedicated Pole Saw (Pruner)\n\n## The POWER in Outdoor Power\n\nCompletely read and understand this manual PRIOR to using this product.\nLea y entienda este manual a fondo, ANTES de usar este producto.\nLisez complètement et comprenez ce manuel AVANT d'utiliser ce produit.",
+    "questions": [
+      "What product is this Owner’s/Operator’s Manual written for?",
+      "What action is the user instructed to take before using this product?",
+      "Which brand and slogan are mentioned on the manual cover?"
+    ]
+  },
+  "chunk2": {
+    "text": "# MARUYAMA \n\n## Limited Warranty Statement\n\nAll Maruyama commercial/ industrial products are warranted to the original purchaser to be free from defects in material and workmanship from the date of purchase for the time periods listed as follows:\n\nLifetime for solid steel driveshaft and ignition coils.\n5 years for qualified IRON 5-YR commercial, institutional, or industrial use.\n1 year for residential or 2 years for commercial use with competitor's oil.\n90 days for rental use.\nEngine - Refer to engine manufacturer's warranty statement. Only Maruyama engines are covered by this limited warranty statement.\n\nAny part of a Maruyama product found to be defective within the applicable warranty period shall, at Maruyama's option, be repaired or replaced without charge. Warranty consideration is obtained by delivering any Maruyama product believed to be defective to an Authorized Maruyama Servicing Dealer within the applicable warranty period.\n\nThe purchaser shall not be charged for diagnostic labor that leads to the determination that a warranted part is defective, if the diagnostic work is performed at a Maruyama Dealer.\n\nEMISSION-RELATED PARTS WARRANTY: In addition to the above warranty coverage, Maruyama Mfg. Co., Inc. will repair or replace, free of charge, for the original purchaser and each subsequent purchaser any emission-related part or parts found to be defective in material and workmanship for two (2) years from original retail delivery date except catalytic converter. Catalytic converter is warranted one year from original retail delivery date.",
+    "questions": [
+      "What are the different warranty periods provided for Maruyama products based on usage type?",
+      "What must a purchaser do to obtain warranty service for a defective product?",
+      "How long are emission-related parts covered under the Maruyama warranty?"
+    ]
+  },
+  "chunk3": {
+    "text": "# This warranty does not cover the following: \n\n1. Maintenance items (excluding defects in materials and workmanship) including hoses, spark plugs, starter rope, air and fuel filters, clutch shoes, vibration isolators, throttle cables and all cutting attachments, etc.\n2. Extra expenses including shipping and handling, travel, payment for lost time or pay and for any inconvenience and storage.\n3. Alterations or modifications including aftermarket parts not authorized by Maruyama U.S., Inc.\n4. Wear, accident, abuse, neglect, misuse, negligence, improper fuels, lubricants, fuel mixtures, or failure to operate or maintain the product according to instructions.\n\nRepair or replacement as provided under this warranty is the exclusive remedy of the consumer. Proof of purchase and registration will be required in order to obtain warranty service.",
+    "questions": [
+      "Which types of items and damages are excluded from warranty coverage?",
+      "What is stated as the exclusive remedy available to the consumer?",
+      "What proof is required to obtain warranty service under this policy?"
+    ]
+  },
+  "chunk4": {
+    "text": "# WARNING:\nThe engine exhaust from this product contains chemicals known to the State of California to cause cancer, birth defects or other reproductive harm.\n\nTHE AIR INDEX OF THIS ENGINE IS 3\n\nNOTE: THE LOWER THE AIR INDEX, THE LESS POLLUTION\nTHIS ENGINE IS CERTIFIED TO BE EMISSIONS COMPLIANT FOR THE USE/EXTENDED: 300 HOURS\n\n## FEDERAL EMISSION CONTROL WARRANTY STATEMENT\n\nNew small off-road engines must meet U.S. EPA regulations and be free from defects in materials and workmanship for the first two years of engine use. The emission durability of this engine is 300 hours.\n\nIf any emission-related part is defective, Maruyama Manufacturing Company, Inc. will repair or replace it free of charge.",
+    "questions": [
+      "What health warning is given regarding the engine exhaust of this product?",
+      "What is the air index rating and emissions compliance duration of this engine?",
+      "How long is the manufacturer’s warranty coverage for emission-related parts?"
+    ]
+  }
+}
