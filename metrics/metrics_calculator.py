@@ -93,14 +93,6 @@ class GeminiEmbeddings(Embeddings):
 
 
 # =====================================================
-# Metric Models
-# =====================================================
-
-# Removed redundant RetrievalMetrics and GenerationMetrics classes.
-# They are now imported from core.data_models.
-
-
-# =====================================================
 # Base Calculator
 # =====================================================
 
@@ -146,7 +138,7 @@ class RetrievalMetricsCalculator(MetricsCalculator):
             for i, r in enumerate(rels[:k]) if r
         )
 
-    def compute(self, data: List[Dict[str, Any]], k: int = 5, requested_metrics: Optional[List[str]] = None) -> RetrievalMetrics:
+    def compute(self, data: List[Dict[str, Any]], k: int = 3, requested_metrics: Optional[List[str]] = None) -> RetrievalMetrics:
         if not data:
             return RetrievalMetrics(k=k, total_queries=0)
 
