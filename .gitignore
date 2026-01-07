@@ -4,8 +4,8 @@
 .venv
 
 # metrics outputs (do not commit)
-generator_metrics.json
-retriever_metrics.json
+#generator_metrics.json
+#retriever_metrics.json
 visionragresult.json
 
 # data

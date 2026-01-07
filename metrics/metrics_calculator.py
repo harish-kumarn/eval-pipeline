@@ -244,11 +244,12 @@ class GenerationMetricsCalculator(MetricsCalculator):
             return None
 
         dataset = self.Dataset.from_dict({
-            "question": [d["question"] for d in valid],
-            "answer": [d["answer"] for d in valid],
-            "ground_truth": [d["ground_truth"] for d in valid],
+            "question": [str(d["question"]) for d in valid],
+            "answer": [str(d["answer"]) for d in valid],
+            "ground_truth": [str(d["ground_truth"]) for d in valid],
             "contexts": [d["contexts"] for d in valid],
         })
+
 
         results = self.evaluate(
             dataset,

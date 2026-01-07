@@ -1,10 +1,15 @@
 {
     "retriever_metrics": [
         "recall",
-        "mrr"
+        "mrr",
+        "precision",
+        "ndcg"
     ],
     "generation_metrics": [
         "faithfulness",
+        "answer_relevancy",
+        "context_precision",
+        "context_recall",
         "answer_correctness"
     ]
 }

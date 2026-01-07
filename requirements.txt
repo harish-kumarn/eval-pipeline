@@ -5,3 +5,4 @@ ragas>=0.1.0
 datasets>=2.14.0
 requests>=2.31.0
 tqdm>=4.66.0
+httpx>=0.25.0

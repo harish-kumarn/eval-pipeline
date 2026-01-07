@@ -2,9 +2,11 @@ import asyncio
 import argparse
 import sys
 import logging
+from pathlib import Path
 
 from core.data_models import PipelineConfig
 from pipeline.orchestrator import EvaluationOrchestrator
+from metric_analyzer.analyzer import MetricAnalyzer
 
 # --------------------------------------------------
 # Logging
@@ -34,6 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--no-save", action="store_true")
     parser.add_argument("--metrics-config", help="Path to metrics configuration JSON file")
+    parser.add_argument("--analyze", action="store_true", help="Run metric analysis after evaluation")
 
     return parser.parse_args()
 

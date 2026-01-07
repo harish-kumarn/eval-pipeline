@@ -1,0 +1,372 @@
+[
+  {
+    "query_id": "q1_chunk1",
+    "query": "",
+    "category": "both_success",
+    "retrieval_score": 1.0,
+    "generation_score": 0.7647058823529411,
+    "retrieval_metrics": {
+      "qid": "q1_chunk1",
+      "rank": 1,
+      "ndcg": 1.0,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q1_chunk1",
+      "faithfulness": 0.7647058823529411,
+      "answer_relevancy": 0.9307471920173871,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.5482980142369289
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "Mixed Performance",
+      "diagnosis": "Some metrics passing, others failing",
+      "inference": "Requires deeper investigation",
+      "severity": "warning",
+      "production_risk": "medium"
+    }
+  },
+  {
+    "query_id": "q2_chunk1",
+    "query": "",
+    "category": "both_success",
+    "retrieval_score": 1.0,
+    "generation_score": 0.98456,
+    "retrieval_metrics": {
+      "qid": "q2_chunk1",
+      "rank": 1,
+      "ndcg": 1.0,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q2_chunk1",
+      "faithfulness": 0.98456,
+      "answer_relevancy": 0.9646894107290794,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.48646868264024695
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "Mixed Performance",
+      "diagnosis": "Some metrics passing, others failing",
+      "inference": "Requires deeper investigation",
+      "severity": "warning",
+      "production_risk": "medium"
+    }
+  },
+  {
+    "query_id": "q7_chunk1",
+    "query": "",
+    "category": "both_success",
+    "retrieval_score": 1.0,
+    "generation_score": 1.0,
+    "retrieval_metrics": {
+      "qid": "q7_chunk1",
+      "rank": 1,
+      "ndcg": 1.0,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q7_chunk1",
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.984826905973765,
+      "context_precision": 0.9999999999,
+      "context_recall": 0.0,
+      "answer_correctness": 0.5348142680526216
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "\ud83d\udfe1 Retrieval Fault",
+      "diagnosis": "Context missing but model stayed grounded",
+      "inference": "Retriever failed but generator didn't hallucinate",
+      "severity": "warning",
+      "production_risk": "medium"
+    }
+  },
+  {
+    "query_id": "q3_chunk1",
+    "query": "",
+    "category": "retrieval_success_gen_fail",
+    "retrieval_score": 1.0,
+    "generation_score": 0.45454545454545453,
+    "retrieval_metrics": {
+      "qid": "q3_chunk1",
+      "rank": 1,
+      "ndcg": 1.0,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q3_chunk1",
+      "faithfulness": 0.45454545454545453,
+      "answer_relevancy": 0.9528684729524065,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.2857862359848451
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "\ud83d\udd34 Context Ignoring",
+      "diagnosis": "Model ignoring good context (prompt failure)",
+      "inference": "Good context available but model not using it",
+      "severity": "critical",
+      "production_risk": "high"
+    }
+  },
+  {
+    "query_id": "q4_chunk1",
+    "query": "",
+    "category": "retrieval_success_gen_fail",
+    "retrieval_score": 1.0,
+    "generation_score": 0.16666666666666666,
+    "retrieval_metrics": {
+      "qid": "q4_chunk1",
+      "rank": 1,
+      "ndcg": 1.0,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q4_chunk1",
+      "faithfulness": 0.16666666666666666,
+      "answer_relevancy": 0.9716083510076149,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.45470649143870967
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "\ud83d\udd34 Context Ignoring",
+      "diagnosis": "Model ignoring good context (prompt failure)",
+      "inference": "Good context available but model not using it",
+      "severity": "critical",
+      "production_risk": "high"
+    }
+  },
+  {
+    "query_id": "q6_chunk1",
+    "query": "",
+    "category": "retrieval_success_gen_fail",
+    "retrieval_score": 1.0,
+    "generation_score": 0.5,
+    "retrieval_metrics": {
+      "qid": "q6_chunk1",
+      "rank": 1,
+      "ndcg": 1.0,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q6_chunk1",
+      "faithfulness": 0.5,
+      "answer_relevancy": 0.9767923042905183,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.5305888711456122
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "\ud83d\udd34 Context Ignoring",
+      "diagnosis": "Model ignoring good context (prompt failure)",
+      "inference": "Good context available but model not using it",
+      "severity": "critical",
+      "production_risk": "high"
+    }
+  },
+  {
+    "query_id": "q8_chunk1",
+    "query": "",
+    "category": "retrieval_success_gen_fail",
+    "retrieval_score": 1.0,
+    "generation_score": 0.5,
+    "retrieval_metrics": {
+      "qid": "q8_chunk1",
+      "rank": 1,
+      "ndcg": 1.0,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q8_chunk1",
+      "faithfulness": 0.5,
+      "answer_relevancy": 0.9767923042905183,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.5305888711456122
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "\ud83d\udd34 Context Ignoring",
+      "diagnosis": "Model ignoring good context (prompt failure)",
+      "inference": "Good context available but model not using it",
+      "severity": "critical",
+      "production_risk": "high"
+    }
+  },
+  {
+    "query_id": "q9_chunk1",
+    "query": "",
+    "category": "retrieval_success_gen_fail",
+    "retrieval_score": 1.0,
+    "generation_score": 0.3225806451612903,
+    "retrieval_metrics": {
+      "qid": "q9_chunk1",
+      "rank": 1,
+      "ndcg": 1.0,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q9_chunk1",
+      "faithfulness": 0.3225806451612903,
+      "answer_relevancy": 0.9767038750689984,
+      "context_precision": 0.9999999999,
+      "context_recall": 0.0,
+      "answer_correctness": 0.3053370023234854
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "\ud83d\udd34 Gap Filling Hallucination",
+      "diagnosis": "Hallucinating to fill missing information",
+      "inference": "Model making up info for incomplete context",
+      "severity": "critical",
+      "production_risk": "high"
+    }
+  },
+  {
+    "query_id": "q10_chunk1",
+    "query": "",
+    "category": "retrieval_success_gen_fail",
+    "retrieval_score": 1.0,
+    "generation_score": 0.5,
+    "retrieval_metrics": {
+      "qid": "q10_chunk1",
+      "rank": 1,
+      "ndcg": 1.0,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q10_chunk1",
+      "faithfulness": 0.5,
+      "answer_relevancy": 0.9767923042905183,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.5305888711456122
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "\ud83d\udd34 Context Ignoring",
+      "diagnosis": "Model ignoring good context (prompt failure)",
+      "inference": "Good context available but model not using it",
+      "severity": "critical",
+      "production_risk": "high"
+    }
+  },
+  {
+    "query_id": "q5_chunk1",
+    "query": "",
+    "category": "both_fail",
+    "retrieval_score": 0.3333333333333333,
+    "generation_score": 0.5227272727272727,
+    "retrieval_metrics": {
+      "qid": "q5_chunk1",
+      "rank": 3,
+      "ndcg": 0.5,
+      "recall": 1,
+      "mrr": 0.3333333333333333,
+      "precision": 0.3333333333333333
+    },
+    "generation_metrics": {
+      "qid": "q5_chunk1",
+      "faithfulness": 0.5227272727272727,
+      "answer_relevancy": 0.983059961679894,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.6758
+    },
+    "retrieval_pattern": {
+      "pattern_type": "High Recall + Low Precision",
+      "diagnosis": "Too many noisy documents retrieved",
+      "root_cause": "Weak ranking / over-fetching",
+      "action": "Improve reranker, reduce k, add filtering",
+      "severity": "warning"
+    },
+    "generation_pattern": {
+      "pattern_type": "\ud83d\udd34 Context Ignoring",
+      "diagnosis": "Model ignoring good context (prompt failure)",
+      "inference": "Good context available but model not using it",
+      "severity": "critical",
+      "production_risk": "high"
+    }
+  }
+]
