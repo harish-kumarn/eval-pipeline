@@ -1,0 +1,10 @@
+{
+    "retriever_metrics": [
+        "recall",
+        "mrr"
+    ],
+    "generation_metrics": [
+        "faithfulness",
+        "answer_correctness"
+    ]
+}

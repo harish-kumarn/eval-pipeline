@@ -28,11 +28,12 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument("--target-chunks", default="data/target_chunks.json")
     parser.add_argument("--output-dir", default=".")
-    parser.add_argument("--user-id", default="434")
-    parser.add_argument("--k", type=int, default=5)
+    parser.add_argument("--user-id", default="43")
+    parser.add_argument("--k", type=int, default=3)
     parser.add_argument("--chunk-format", default="chunk{id}")
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--no-save", action="store_true")
+    parser.add_argument("--metrics-config", help="Path to metrics configuration JSON file")
 
     return parser.parse_args()
 
@@ -61,6 +62,7 @@ def main() -> None:
         chunk_format=args.chunk_format,
         retriever_timeout=args.timeout,
         save_results=not args.no_save,
+        metrics_config_path=args.metrics_config,
     )
 
     orchestrator = EvaluationOrchestrator(config)

@@ -32,8 +32,8 @@ class EvaluationOrchestrator:
         )
 
         self.question_extractor = QuestionExtractor(config.target_chunks_file)
-        self.retrieval_calc = RetrievalMetricsCalculator()
-        self.generation_calc = GenerationMetricsCalculator()
+        self.retrieval_calculator = RetrievalMetricsCalculator()
+        self.generation_calculator = GenerationMetricsCalculator()
 
         self.output_dir = Path(config.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -67,9 +67,9 @@ class EvaluationOrchestrator:
 
     def _compute_metrics(self, visionrag_file: Path) -> Dict[str, Any]:
         with open(visionrag_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            retrieval_results = json.load(f)
 
-        for d in data:
+        for d in retrieval_results:
             if not d.get("ground_truth"):
                 d["ground_truth"] = self.question_extractor.get_ground_truth(d["qid"]) or ""
 
@@ -77,10 +77,10 @@ class EvaluationOrchestrator:
             return self.question_extractor.get_chunk_text(cid) or ""
 
         # Build generation dataset
-        gen_data = []
-        for d in data:
+        generation_data = []
+        for d in retrieval_results:
             contexts = [extract_context(cid) for cid in d.get("retrieved_chunk_ids", [])[:self.config.k]]
-            gen_data.append({
+            generation_data.append({
                 "qid": d.get("qid"),
                 "question": d.get("question"),
                 "answer": d.get("generated_answer"),
@@ -92,11 +92,33 @@ class EvaluationOrchestrator:
         llm = LangchainLLMWrapper(GeminiLLM())
         embeddings = LangchainEmbeddingsWrapper(GeminiEmbeddings())
 
-        retrieval_metrics = self.retrieval_calc.compute(data, k=self.config.k)
-        generation_metrics = self.generation_calc.compute(
-            gen_data,
+        # Load metrics config if provided
+        metrics_config = {}
+        if self.config.metrics_config_path:
+            config_path = Path(self.config.metrics_config_path)
+            if config_path.exists():
+                logger.info(f"Loading metrics config from {config_path}")
+                with open(config_path, "r") as f:
+                    metrics_config = json.load(f)
+            else:
+                logger.warning(f"Metrics config file {config_path} not found. Using all metrics.")
+
+        retrieval_req = metrics_config.get("retriever_metrics")
+        generation_req = metrics_config.get("generation_metrics")
+
+        # 1. Retrieval Metrics
+        retrieval_metrics = self.retrieval_calculator.compute(
+            retrieval_results,
+            k=self.config.k,
+            requested_metrics=retrieval_req
+        )
+
+        # 2. Generation Metrics (RAGAS)
+        generation_metrics = self.generation_calculator.compute(
+            generation_data,
             llm_wrapper=llm,
             embeddings_wrapper=embeddings,
+            requested_metrics=generation_req
         )
 
         retrieval_metrics_dict = retrieval_metrics.to_dict()

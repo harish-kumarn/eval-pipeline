@@ -10,6 +10,7 @@ import google.generativeai as genai
 
 from langchain_core.language_models.llms import LLM
 from langchain_core.embeddings import Embeddings
+from core.data_models import RetrievalMetrics, GenerationMetrics
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -95,46 +96,8 @@ class GeminiEmbeddings(Embeddings):
 # Metric Models
 # =====================================================
 
-@dataclass
-class RetrievalMetrics:
-    mrr_at_k: float
-    recall_at_k: float
-    precision_at_k: float
-    ndcg_at_k: float
-    mean_rank: float
-    k: int
-    total_queries: int
-    per_query_metrics: List[Dict[str, Any]]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "mrr@k": self.mrr_at_k,
-            "recall@k": self.recall_at_k,
-            "precision@k": self.precision_at_k,
-            "ndcg@k": self.ndcg_at_k,
-            "mean_rank": self.mean_rank,
-            "k": self.k,
-            "total_queries": self.total_queries,
-            "per_query_metrics": self.per_query_metrics,
-        }
-
-
-@dataclass
-class GenerationMetrics:
-    faithfulness: float
-    answer_relevancy: float
-    context_recall: float
-    context_precision: float
-    per_query_metrics: List[Dict[str, Any]]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "faithfulness": self.faithfulness,
-            "answer_relevancy": self.answer_relevancy,
-            "context_recall": self.context_recall,
-            "context_precision": self.context_precision,
-            "per_query_metrics": self.per_query_metrics,
-        }
+# Removed redundant RetrievalMetrics and GenerationMetrics classes.
+# They are now imported from core.data_models.
 
 
 # =====================================================
@@ -152,56 +115,77 @@ class MetricsCalculator(ABC):
 # =====================================================
 
 class RetrievalMetricsCalculator(MetricsCalculator):
+    """Calculator for retrieval-specific metrics."""
 
-    @staticmethod
-    def _dcg(rels: List[bool], k: int) -> float:
+    def __init__(self):
+        self.metric_map = {
+            "mrr": self._calculate_mrr,
+            "recall": self._calculate_recall,
+            "precision": self._calculate_precision,
+            "ndcg": self._calculate_ndcg,
+        }
+
+    def _calculate_mrr(self, rank: Optional[int], **kwargs) -> float:
+        return 1 / rank if rank else 0
+
+    def _calculate_recall(self, rank: Optional[int], **kwargs) -> float:
+        return 1 if rank else 0
+
+    def _calculate_precision(self, rels: List[bool], k: int, **kwargs) -> float:
+        return sum(rels[:k]) / k
+
+    def _calculate_ndcg(self, rels: List[bool], k: int, **kwargs) -> float:
+        dcg = self._dcg(rels, k)
+        idcg = self._dcg([True] * min(sum(rels), k), k)
+        return dcg / idcg if idcg else 0
+
+    def _dcg(self, rels: List[bool], k: int) -> float:
+
         return sum(
             1 / math.log2(i + 2)
             for i, r in enumerate(rels[:k]) if r
         )
 
-    def compute(self, data: List[Dict[str, Any]], k: int = 5) -> RetrievalMetrics:
+    def compute(self, data: List[Dict[str, Any]], k: int = 5, requested_metrics: Optional[List[str]] = None) -> RetrievalMetrics:
         if not data:
-            return RetrievalMetrics(0, 0, 0, 0, float("inf"), k, 0, [])
+            return RetrievalMetrics(k=k, total_queries=0)
 
-        mrr, recall, precision, ndcg, ranks = [], [], [], [], []
+        compute_all = requested_metrics is None
+        requested = set(requested_metrics) if requested_metrics else set(self.metric_map.keys())
+
+        # Filter valid metrics and initialize storage
+        active_metrics = {m: [] for m in requested if m in self.metric_map}
+        ranks = []
         per_query = []
 
         for d in data:
             gt = d.get("ground_truth_chunk_id")
-            rels = [r == gt for r in d.get("retrieved_chunk_ids", [])]
-
+            retrieved = d.get("retrieved_chunk_ids", [])
+            rels = [r == gt for r in retrieved]
             rank = next((i + 1 for i, r in enumerate(rels[:k]) if r), None)
+            
+            query_metrics = {"qid": d.get("qid"), "rank": rank}
 
-            mrr.append(1 / rank if rank else 0)
-            recall.append(1 if rank else 0)
-            precision.append(sum(rels[:k]) / k)
-
-            dcg = self._dcg(rels, k)
-            idcg = self._dcg([True] * min(sum(rels), k), k)
-            ndcg.append(dcg / idcg if idcg else 0)
+            for m_name in active_metrics:
+                metric_func = self.metric_map[m_name]
+                val = metric_func(rank=rank, rels=rels, k=k)
+                active_metrics[m_name].append(val)
+                query_metrics[m_name] = val
 
             if rank:
                 ranks.append(rank)
 
-            per_query.append({
-                "qid": d.get("qid"),
-                "rank": rank,
-                "mrr": mrr[-1],
-                "recall": recall[-1],
-                "precision": precision[-1],
-                "ndcg": ndcg[-1],
-            })
+            per_query.append(query_metrics)
 
         return RetrievalMetrics(
-            sum(mrr) / len(mrr),
-            sum(recall) / len(recall),
-            sum(precision) / len(precision),
-            sum(ndcg) / len(ndcg),
-            sum(ranks) / len(ranks) if ranks else float("inf"),
-            k,
-            len(data),
-            per_query,
+            mrr_at_k=sum(active_metrics["mrr"]) / len(active_metrics["mrr"]) if "mrr" in active_metrics and active_metrics["mrr"] else None,
+            recall_at_k=sum(active_metrics["recall"]) / len(active_metrics["recall"]) if "recall" in active_metrics and active_metrics["recall"] else None,
+            precision_at_k=sum(active_metrics["precision"]) / len(active_metrics["precision"]) if "precision" in active_metrics and active_metrics["precision"] else None,
+            ndcg_at_k=sum(active_metrics["ndcg"]) / len(active_metrics["ndcg"]) if "ndcg" in active_metrics and active_metrics["ndcg"] else None,
+            mean_rank=sum(ranks) / len(ranks) if ranks else None,
+            k=k,
+            total_queries=len(data),
+            per_query_metrics=per_query,
         )
 
 
@@ -218,22 +202,39 @@ class GenerationMetricsCalculator(MetricsCalculator):
             answer_relevancy,
             context_precision,
             context_recall,
+            answer_correctness,
         )
         from datasets import Dataset
 
         self.evaluate = evaluate
         self.RunConfig = RunConfig
-        self.metrics = [
-            faithfulness,
-            answer_relevancy,
-            context_recall,
-            context_precision,
-        ]
         self.Dataset = Dataset
+        
+        self.metric_map = {
+            "faithfulness": faithfulness,
+            "answer_relevancy": answer_relevancy,
+            "context_precision": context_precision,
+            "context_recall": context_recall,
+            "answer_correctness": answer_correctness,
+        }
 
-    def compute(self, data, llm_wrapper, embeddings_wrapper) -> GenerationMetrics:
+    def compute(self, data, llm_wrapper, embeddings_wrapper, requested_metrics: Optional[List[str]] = None) -> GenerationMetrics:
         if not llm_wrapper or not embeddings_wrapper:
             raise RuntimeError("RAGAS requires llm_wrapper and embeddings_wrapper")
+
+        metrics_to_run = []
+        if requested_metrics:
+            for m in requested_metrics:
+                if m in self.metric_map:
+                    metrics_to_run.append(self.metric_map[m])
+                else:
+                    logger.warning(f"Generation metric '{m}' not recognized. Skipping.")
+        else:
+            metrics_to_run = list(self.metric_map.values())
+
+        if not metrics_to_run:
+            logger.warning("No valid generation metrics to compute. Returning None.")
+            return None
 
         valid = []
         for d in data:
@@ -259,7 +260,7 @@ class GenerationMetricsCalculator(MetricsCalculator):
 
         results = self.evaluate(
             dataset,
-            metrics=self.metrics,
+            metrics=metrics_to_run,
             llm=llm_wrapper,
             embeddings=embeddings_wrapper,
             run_config=self.RunConfig(timeout=600),
@@ -269,18 +270,17 @@ class GenerationMetricsCalculator(MetricsCalculator):
 
         per_query = []
         for i, row in df.iterrows():
-            per_query.append({
-                "qid": valid[i].get("qid"),
-                "faithfulness": float(row["faithfulness"]),
-                "answer_relevancy": float(row["answer_relevancy"]),
-                "context_recall": float(row["context_recall"]),
-                "context_precision": float(row["context_precision"]),
-            })
+            metric_res = {"qid": valid[i].get("qid")}
+            for m_name in self.metric_map:
+                if m_name in row:
+                    metric_res[m_name] = float(row[m_name])
+            per_query.append(metric_res)
 
         return GenerationMetrics(
-            faithfulness=float(df["faithfulness"].mean()),
-            answer_relevancy=float(df["answer_relevancy"].mean()),
-            context_recall=float(df["context_recall"].mean()),
-            context_precision=float(df["context_precision"].mean()),
+            faithfulness=float(df["faithfulness"].mean()) if "faithfulness" in df else None,
+            answer_relevancy=float(df["answer_relevancy"].mean()) if "answer_relevancy" in df else None,
+            context_recall=float(df["context_recall"].mean()) if "context_recall" in df else None,
+            context_precision=float(df["context_precision"].mean()) if "context_precision" in df else None,
+            answer_correctness=float(df["answer_correctness"].mean()) if "answer_correctness" in df else None,
             per_query_metrics=per_query,
         )

@@ -63,17 +63,17 @@ class GenerationResult:
 @dataclass
 class RetrievalMetrics:
     """Aggregated retrieval metrics."""
-    mrr_at_k: float
-    recall_at_k: float
-    precision_at_k: float
-    ndcg_at_k: float
-    mean_rank: float
-    k: int
-    total_queries: int
+    mrr_at_k: Optional[float] = None
+    recall_at_k: Optional[float] = None
+    precision_at_k: Optional[float] = None
+    ndcg_at_k: Optional[float] = None
+    mean_rank: Optional[float] = None
+    k: int = 0
+    total_queries: int = 0
     per_query_metrics: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        return {k: v for k, v in {
             "mrr@k": self.mrr_at_k,
             "recall@k": self.recall_at_k,
             "precision@k": self.precision_at_k,
@@ -82,26 +82,28 @@ class RetrievalMetrics:
             "k": self.k,
             "total_queries": self.total_queries,
             "per_query_metrics": self.per_query_metrics,
-        }
+        }.items() if v is not None}
 
 
 @dataclass
 class GenerationMetrics:
     """Aggregated generation metrics using RAGAS framework."""
-    faithfulness: float
-    answer_relevancy: float
-    context_recall: float
-    context_precision: float
+    faithfulness: Optional[float] = None
+    answer_relevancy: Optional[float] = None
+    context_recall: Optional[float] = None
+    context_precision: Optional[float] = None
+    answer_correctness: Optional[float] = None
     per_query_metrics: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        return {k: v for k, v in {
             "faithfulness": self.faithfulness,
             "answer_relevancy": self.answer_relevancy,
             "context_recall": self.context_recall,
             "context_precision": self.context_precision,
+            "answer_correctness": self.answer_correctness,
             "per_query_metrics": self.per_query_metrics,
-        }
+        }.items() if v is not None}
 
 
 @dataclass
@@ -109,8 +111,9 @@ class PipelineConfig:
     """Configuration for the evaluation pipeline."""
     target_chunks_file: str
     output_dir: str
-    user_id: str = "434"
+    user_id: str = "43"
     k: int = 3
     chunk_format: str = "chunk{id}"
     retriever_timeout: int = 300
     save_results: bool = True
+    metrics_config_path: Optional[str] = None
