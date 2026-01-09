@@ -1,0 +1,89 @@
+{
+    "chunk1": {
+        "text": "Carefully read the “Operation Manual” and instruction manual of the agrichemical used, to carry out work correctly and safely.\n\n[1] When using the boom sprayer installed on the tractor, make sure it is not tilted more than 5°.\n\n[2] The person performing spraying should wear protective gears for agrichemical spraying (such as a pest control mask, protective glasses, boots, rubber gloves and waterproof protective cloth, etc.) to prevent the reagent from coming in direct contact with the body.\n\n[3] Inspect/service and repair the boom sprayer on flat ground. To inspect/service the boom sprayer while still installed on the tractor, stop the engine on flat ground, apply the parking brake, remove the key, and extend the boom sprayer stand. Failure to do so may cause the tractor to move unexpectedly, resulting in an accident.\n\n[5] Keep non-operators away from the area where pest control work is performed. Failure to do so may lead to an accident.\n\n[6] Exercise due caution not to pollute water supply systems, rivers, lakes, ponds, etc.\n\n[7] Never refuel near a fire source as it may cause fire. Refueling while smoking is strictly prohibited.",
+        "images": [
+            "pdf_images/page_1_img_1.png"
+        ],
+        "chunk_description": "General safety guidelines for operating a boom sprayer, including reading manuals, protective gear, inspection procedures, and environmental precautions.",
+        "overlapping": false,
+        "overlapping_reason": "",
+        "semantic_completeness_score": 9.0,
+        "questions": {
+            "direct": [
+                {
+                    "question": "What is the maximum tilt angle allowed when using a boom sprayer installed on a tractor?",
+                    "answer_span": "5°",
+                    "source_sentence": "[1] When using the boom sprayer installed on the tractor, make sure it is not tilted more than 5°.",
+                    "confidence": 0.95
+                },
+                {
+                    "question": "What protective gear should a person wear when performing agrichemical spraying?",
+                    "answer_span": "a pest control mask, protective glasses, boots, rubber gloves and waterproof protective cloth, etc.",
+                    "source_sentence": "[2] The person performing spraying should wear protective gears for agrichemical spraying (such as a pest control mask, protective glasses, boots, rubber gloves and waterproof protective cloth, etc.) to prevent the reagent from coming in direct contact with the body.",
+                    "confidence": 0.95
+                },
+                {
+                    "question": "Where should a boom sprayer be inspected, serviced, and repaired?",
+                    "answer_span": "on flat ground",
+                    "source_sentence": "[3] Inspect/service and repair the boom sprayer on flat ground.",
+                    "confidence": 0.95
+                },
+                {
+                    "question": "What is strictly prohibited when refueling near a fire source?",
+                    "answer_span": "Refueling while smoking",
+                    "source_sentence": "[7] Never refuel near a fire source as it may cause fire. Refueling while smoking is strictly prohibited.",
+                    "confidence": 0.95
+                }
+            ],
+            "indirect": [
+                {
+                    "question": "Why is it important to stop the engine, apply the parking brake, remove the key, and extend the boom sprayer stand before inspecting or servicing it on a tractor?",
+                    "answer_rationale": "Failure to follow these steps may cause the tractor to move unexpectedly, resulting in an accident.",
+                    "reasoning_chain": [
+                        "The text outlines specific steps for inspecting/servicing a boom sprayer installed on a tractor.",
+                        "It explicitly warns that 'Failure to do so may cause the tractor to move unexpectedly, resulting in an accident.'",
+                        "Therefore, these precautions are necessary to prevent accidental movement and ensuing accidents."
+                    ],
+                    "confidence": 0.88
+                },
+                {
+                    "question": "What is the potential consequence of non-operators being too close to pest control work?",
+                    "answer_rationale": "The text explicitly states that failure to keep non-operators away may lead to an accident.",
+                    "reasoning_chain": [
+                        "The text advises to 'Keep non-operators away from the area where pest control work is performed.'",
+                        "It immediately follows with 'Failure to do so may lead to an accident.'",
+                        "Thus, proximity of non-operators can result in an accident."
+                    ],
+                    "confidence": 0.85
+                },
+                {
+                    "question": "What environmental risk is highlighted regarding water systems during pest control?",
+                    "answer_rationale": "The text instructs to 'Exercise due caution not to pollute water supply systems, rivers, lakes, ponds, etc.', which implies a risk of pollution to these water sources if caution is not exercised.",
+                    "reasoning_chain": [
+                        "The instruction 'Exercise due caution not to pollute water supply systems, rivers, lakes, ponds, etc.' implies that pollution of these water systems is a potential risk during pest control work."
+                    ],
+                    "confidence": 0.8
+                }
+            ],
+            "image_based": []
+        },
+        "index_concept_vocabulary": "boom sprayer safety, agrichemical spraying, protective gear, tractor operation, boom sprayer installation, weight balance, environmental precautions, refueling safety, startup inspection, universal joint",
+        "layout_complexity": "moderate",
+        "layout_complexity_score": 5,
+        "layout_elements": [
+            "text_blocks",
+            "lists",
+            "headers",
+            "warnings",
+            "diagrams"
+        ],
+        "ocr_corrections": [],
+        "content_continuation": {
+            "from_previous_page": false,
+            "to_next_page": false,
+            "continuation_points": []
+        },
+        "chunk_quality_score": 8.9,
+        "page_no": 1
+    }
+}

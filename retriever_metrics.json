@@ -1,91 +1,67 @@
 {
-  "mrr@k": 0.7333333333333333,
-  "recall@k": 0.8,
-  "precision@k": 0.26666666666666666,
-  "ndcg@k": 0.75,
-  "mean_rank": 1.25,
+  "mrr@k": 0.9047619047619048,
+  "recall@k": 1.0,
+  "precision@k": 0.3333333333333333,
+  "ndcg@k": 0.9285714285714286,
+  "mean_rank": 1.2857142857142858,
   "k": 3,
-  "total_queries": 10,
+  "total_queries": 7,
   "per_query_metrics": [
     {
       "qid": "q1_chunk1",
       "rank": 1,
-      "ndcg": 1.0,
+      "precision": 0.3333333333333333,
       "recall": 1,
-      "mrr": 1.0,
-      "precision": 0.3333333333333333
+      "ndcg": 1.0,
+      "mrr": 1.0
     },
     {
       "qid": "q2_chunk1",
       "rank": 1,
-      "ndcg": 1.0,
+      "precision": 0.3333333333333333,
       "recall": 1,
-      "mrr": 1.0,
-      "precision": 0.3333333333333333
+      "ndcg": 1.0,
+      "mrr": 1.0
     },
     {
       "qid": "q3_chunk1",
       "rank": 1,
-      "ndcg": 1.0,
+      "precision": 0.3333333333333333,
       "recall": 1,
-      "mrr": 1.0,
-      "precision": 0.3333333333333333
+      "ndcg": 1.0,
+      "mrr": 1.0
     },
     {
       "qid": "q4_chunk1",
       "rank": 1,
-      "ndcg": 1.0,
+      "precision": 0.3333333333333333,
       "recall": 1,
-      "mrr": 1.0,
-      "precision": 0.3333333333333333
+      "ndcg": 1.0,
+      "mrr": 1.0
     },
     {
       "qid": "q5_chunk1",
       "rank": 3,
-      "ndcg": 0.5,
+      "precision": 0.3333333333333333,
       "recall": 1,
-      "mrr": 0.3333333333333333,
-      "precision": 0.3333333333333333
+      "ndcg": 0.5,
+      "mrr": 0.3333333333333333
     },
     {
       "qid": "q6_chunk1",
       "rank": 1,
-      "ndcg": 1.0,
+      "precision": 0.3333333333333333,
       "recall": 1,
-      "mrr": 1.0,
-      "precision": 0.3333333333333333
+      "ndcg": 1.0,
+      "mrr": 1.0
     },
     {
       "qid": "q7_chunk1",
       "rank": 1,
-      "ndcg": 1.0,
+      "precision": 0.3333333333333333,
       "recall": 1,
-      "mrr": 1.0,
-      "precision": 0.3333333333333333
-    },
-    {
-      "qid": "q8_chunk1",
-      "rank": 1,
       "ndcg": 1.0,
-      "recall": 1,
-      "mrr": 1.0,
-      "precision": 0.3333333333333333
-    },
-    {
-      "qid": "q9_chunk1",
-      "rank": 1,
-      "ndcg": 1.0,
-      "recall": 1,
-      "mrr": 1.0,
-      "precision": 0.3333333333333333
-    },
-    {
-      "qid": "q10_chunk1",
-      "rank": 1,
-      "ndcg": 1.0,
-      "recall": 1,
-      "mrr": 1.0,
-      "precision": 0.3333333333333333
+      "mrr": 1.0
     }
   ]
 }

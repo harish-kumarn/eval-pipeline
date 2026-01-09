@@ -40,13 +40,20 @@ class EvaluationOrchestrator:
 
     async def run(self) -> Dict[str, Any]:
         questions = self.question_extractor.extract_questions()
-        await self._run_retriever(questions)
-        return self._compute_metrics(self.output_dir / "visionragresult.json")
+        visionrag_file = self.output_dir / "visionragresult.json"
 
+        # 1. Retrieval Phase
+        results = await self._run_retriever(questions)
+        
+        # 2. Metrics Phase
+        return self._compute_metrics(visionrag_file)
+
+    # retrieve from VISIONRAG
     async def _run_retriever(self, questions):
         visionrag_file = self.output_dir / "visionragresult.json"
         all_results = []
 
+        logger.info(f"🚀 Retrieving results for {len(questions)} queries...")
         for q in questions:
             result = await self.retriever.retrieve(q)
 
@@ -88,11 +95,7 @@ class EvaluationOrchestrator:
                 "contexts": contexts,
             })
 
-        # RAGAS wrappers
-        llm = LangchainLLMWrapper(GeminiLLM())
-        embeddings = LangchainEmbeddingsWrapper(GeminiEmbeddings())
-
-        # Load metrics config if provided
+        # Load metrics config
         metrics_config = {}
         if self.config.metrics_config_path:
             config_path = Path(self.config.metrics_config_path)
@@ -106,38 +109,42 @@ class EvaluationOrchestrator:
         retrieval_req = metrics_config.get("retriever_metrics")
         generation_req = metrics_config.get("generation_metrics")
 
+        results = {}
+
         # 1. Retrieval Metrics
+        logger.info("Computing retrieval metrics...")
         retrieval_metrics = self.retrieval_calculator.compute(
             retrieval_results,
             k=self.config.k,
             requested_metrics=retrieval_req
         )
+        retrieval_metrics_dict = retrieval_metrics.to_dict()
+        FileHandler.save_json(
+            retrieval_metrics_dict,
+            self.output_dir / "retriever_metrics.json",
+        )
+        results["retrieval_metrics"] = retrieval_metrics_dict
 
         # 2. Generation Metrics (RAGAS)
+        logger.info("Computing generation metrics...")
+        llm = LangchainLLMWrapper(GeminiLLM())
+        embeddings = LangchainEmbeddingsWrapper(GeminiEmbeddings())
+
         generation_metrics = self.generation_calculator.compute(
             generation_data,
             llm_wrapper=llm,
             embeddings_wrapper=embeddings,
             requested_metrics=generation_req
         )
-
-        retrieval_metrics_dict = retrieval_metrics.to_dict()
-        generation_metrics_dict = generation_metrics.to_dict() if generation_metrics else {}
-
-        FileHandler.save_json(
-            retrieval_metrics_dict,
-            self.output_dir / "retriever_metrics.json",
-        )
-
+        
         if generation_metrics:
+            generation_metrics_dict = generation_metrics.to_dict()
             FileHandler.save_json(
                 generation_metrics_dict,
                 self.output_dir / "generator_metrics.json",
             )
+            results["generation_metrics"] = generation_metrics_dict
         else:
             logger.warning("No valid generation metrics to compute. Skipping generator metrics.")
 
-        return {
-            "retrieval_metrics": retrieval_metrics_dict,
-            "generation_metrics": generation_metrics_dict,
-        }
+        return results

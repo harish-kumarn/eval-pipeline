@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Dict
 from metric_analyzer.models import PerformanceCategory, QueryAnalysis
-from metric_analyzer.patterns import analyze_retrieval_pattern, analyze_generation_pattern
+from metric_analyzer.patterns import analyze_rag_flow
 from metric_analyzer.io_utils import load_metrics
 from metric_analyzer.reporting import to_dataframe, export_json, export_to_csv
 
@@ -46,7 +46,8 @@ class RAGMetricAnalyzer:
             g = gen_map[qid]
             r_score = self.extract_score(r, 'retrieval')
             g_score = self.extract_score(g, 'generation')
-
+            
+            # Bucketing based on simple thresholds
             r_ok = r_score >= self.retrieval_threshold
             g_ok = g_score >= self.generation_threshold
 
@@ -59,6 +60,9 @@ class RAGMetricAnalyzer:
             else:
                 cat = PerformanceCategory.BOTH_FAIL
 
+            # Detailed Flow Analysis
+            flow_result = analyze_rag_flow(r, g, self.metric_thresholds)
+
             categories[cat].append(QueryAnalysis(
                 query_id=qid,
                 query=r.get('query', '') or g.get('query', ''),
@@ -67,8 +71,9 @@ class RAGMetricAnalyzer:
                 category=cat,
                 retrieval_metrics=r,
                 generation_metrics=g,
-                retrieval_pattern=analyze_retrieval_pattern(r, self.metric_thresholds),
-                generation_pattern=analyze_generation_pattern(g, self.metric_thresholds)
+                retrieval_status=flow_result.retrieval_status,
+                hit_type=flow_result.hit_type,
+                outcome=flow_result.outcome
             ))
 
         return categories

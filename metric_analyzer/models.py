@@ -11,24 +11,6 @@ class PerformanceCategory(Enum):
 
 
 @dataclass
-class RetrievalPattern:
-    pattern_type: str
-    diagnosis: str
-    root_cause: str
-    action: str
-    severity: str
-
-
-@dataclass
-class GenerationPattern:
-    pattern_type: str
-    diagnosis: str
-    inference: str
-    severity: str
-    production_risk: str
-
-
-@dataclass
 class QueryAnalysis:
     query_id: str
     query: str
@@ -37,5 +19,6 @@ class QueryAnalysis:
     category: PerformanceCategory
     retrieval_metrics: Dict
     generation_metrics: Dict
-    retrieval_pattern: Optional[RetrievalPattern] = None
-    generation_pattern: Optional[GenerationPattern] = None
+    retrieval_status: str  # MISS, HIT
+    hit_type: Optional[str] = None  # early_hit, late_hit
+    outcome: str = "" # hallucination_from_prior, complete_failure, etc.

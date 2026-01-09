@@ -115,5 +115,4 @@ class PipelineConfig:
     k: int = 3
     chunk_format: str = "chunk{id}"
     retriever_timeout: int = 300
-    save_results: bool = True
     metrics_config_path: Optional[str] = None

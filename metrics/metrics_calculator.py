@@ -260,14 +260,31 @@ class GenerationMetricsCalculator(MetricsCalculator):
         )
 
         df = results.to_pandas()
-
+        
+        # Replace NaN with 0.0 for calculations and report
+        # We use a copy for per_query to avoid mutating the DF if not needed, 
+        # but here we want the metrics to be clean.
         per_query = []
         for i, row in df.iterrows():
-            metric_res = {"qid": valid[i].get("qid")}
+            qid = valid[i].get("qid")
+            metric_res = {"qid": qid}
+            has_nan = False
             for m_name in self.metric_map:
                 if m_name in row:
-                    metric_res[m_name] = float(row[m_name])
+                    val = row[m_name]
+                    if isinstance(val, (float, int)) and math.isnan(val):
+                        logger.warning(f"Metric '{m_name}' is NaN for query ID {qid}. Setting to 0.0.")
+                        val = 0.0
+                        has_nan = True
+                    metric_res[m_name] = float(val)
             per_query.append(metric_res)
+
+        def get_mean(col_name):
+            if col_name in df:
+                # mean() ignores NaN by default. If all are NaN, it returns NaN.
+                val = df[col_name].mean()
+                return float(val) if not math.isnan(val) else 0.0
+            return None
 
         return GenerationMetrics(
             faithfulness=float(df["faithfulness"].mean()) if "faithfulness" in df else None,

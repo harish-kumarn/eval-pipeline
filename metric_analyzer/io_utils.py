@@ -6,11 +6,16 @@ import json
 
 
 def load_metrics(path: str):
+    if path is None:
+        return []
     path = Path(path)
 
     if not path.is_absolute():
         base = Path(__file__).resolve().parent.parent
         path = base / path
+
+    if not path.exists():
+        return []
 
     with open(path) as f:
         data = json.load(f)

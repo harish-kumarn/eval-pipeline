@@ -6,7 +6,7 @@
 # metrics outputs (do not commit)
 #generator_metrics.json
 #retriever_metrics.json
-visionragresult.json
+#visionragresult.json
 
 # data
-data/target_chunks.json
+#data/target_chunks.json
