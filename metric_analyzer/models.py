@@ -20,5 +20,6 @@ class QueryAnalysis:
     retrieval_metrics: Dict
     generation_metrics: Dict
     retrieval_status: str  # MISS, HIT
+    tag: str = "" # direct, indirect, image_based
     hit_type: Optional[str] = None  # early_hit, late_hit
     outcome: str = "" # hallucination_from_prior, complete_failure, etc.

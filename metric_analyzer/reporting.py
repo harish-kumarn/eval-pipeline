@@ -13,6 +13,7 @@ def to_dataframe(categories: Dict[PerformanceCategory, List[QueryAnalysis]]) -> 
             rows.append({
                 "query_id": q.query_id,
                 "query": q.query,
+                "tag": q.tag,
                 "category": cat.value,
                 "retrieval_score": q.retrieval_score,
                 "generation_score": q.generation_score,
@@ -33,6 +34,7 @@ def export_json(categories: Dict[PerformanceCategory, List[QueryAnalysis]], outp
             item = {
                 "query_id": q.query_id,
                 "query": q.query,
+                "tag": q.tag,
                 "category": cat.value,
                 "retrieval_score": q.retrieval_score,
                 "generation_score": q.generation_score,
@@ -60,6 +62,7 @@ def export_to_csv(categories: Dict[PerformanceCategory, List[QueryAnalysis]], ou
             row = {
                 "query_id": q.query_id,
                 "query": q.query,
+                "tag": q.tag,
                 "category": cat.value,
                 "retrieval_score": q.retrieval_score,
                 "generation_score": q.generation_score,
@@ -84,7 +87,7 @@ def export_to_csv(categories: Dict[PerformanceCategory, List[QueryAnalysis]], ou
 
     df = pd.DataFrame(rows)
     # Ensure key columns are first
-    key_cols = ["query_id", "category", "retrieval_status", "hit_type", "outcome", "retrieval_score", "generation_score"]
+    key_cols = ["query_id", "query", "tag", "category", "retrieval_status", "hit_type", "outcome", "retrieval_score", "generation_score"]
     # Reorder if they exist
     existing_key_cols = [c for c in key_cols if c in df.columns]
     other_cols = [c for c in df.columns if c not in existing_key_cols]

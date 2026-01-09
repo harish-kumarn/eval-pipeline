@@ -156,7 +156,12 @@ class RetrievalMetricsCalculator(MetricsCalculator):
             rels = [r == gt for r in retrieved]
             rank = next((i + 1 for i, r in enumerate(rels[:k]) if r), None)
             
-            query_metrics = {"qid": d.get("qid"), "rank": rank}
+            query_metrics = {
+                "qid": d.get("qid"),
+                "query": d.get("question"),
+                "tag": d.get("tag"),
+                "rank": rank
+            }
 
             for m_name in active_metrics:
                 metric_func = self.metric_map[m_name]
@@ -267,7 +272,11 @@ class GenerationMetricsCalculator(MetricsCalculator):
         per_query = []
         for i, row in df.iterrows():
             qid = valid[i].get("qid")
-            metric_res = {"qid": qid}
+            metric_res = {
+                "qid": qid,
+                "query": valid[i].get("question"),
+                "tag": valid[i].get("tag")
+            }
             has_nan = False
             for m_name in self.metric_map:
                 if m_name in row:

@@ -72,6 +72,7 @@ class RAGMetricAnalyzer:
                 retrieval_metrics=r,
                 generation_metrics=g,
                 retrieval_status=flow_result.retrieval_status,
+                tag=r.get('tag') or g.get('tag') or "",
                 hit_type=flow_result.hit_type,
                 outcome=flow_result.outcome
             ))

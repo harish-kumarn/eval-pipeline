@@ -63,6 +63,7 @@ class EvaluationOrchestrator:
                 "ground_truth_chunk_id": result.ground_truth_chunk,
                 "retrieved_chunk_ids": result.retrieved_chunks,
                 "generated_answer": result.generated_answer,
+                "tag": q.question_type,
             }
 
             all_results.append(entry)
@@ -93,6 +94,7 @@ class EvaluationOrchestrator:
                 "answer": d.get("generated_answer"),
                 "ground_truth": d.get("ground_truth"),
                 "contexts": contexts,
+                "tag": d.get("tag"),
             })
 
         # Load metrics config

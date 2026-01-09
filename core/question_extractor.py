@@ -64,7 +64,7 @@ class QuestionExtractor:
             return None
 
         metadata = question.metadata
-        for key in ("answer_span", "answer_rationale", "grounding", "ground_truth"):
+        for key in ("answer_span", "answer_rationale", "grounding", "ground_truth", "answer_extract", "answer_synthesis"):
             if key in metadata and metadata[key]:
                 val = metadata[key]
                 if isinstance(val, list):
