@@ -3,20 +3,30 @@ import argparse
 import sys
 import logging
 from pathlib import Path
+from rich.logging import RichHandler
 
 from core.data_models import PipelineConfig
 from pipeline.orchestrator import EvaluationOrchestrator
 from metric_analyzer.analyzer import RAGMetricAnalyzer
+from metric_analyzer.reporting import export_json, export_to_csv
 
 # --------------------------------------------------
 # Logging
 # --------------------------------------------------
 
+# Configure root logger with RichHandler
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level="INFO",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, markup=True)]
 )
-logger = logging.getLogger(__name__)
+
+# Silence noisy libraries
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+logger = logging.getLogger("rich")
 
 
 # --------------------------------------------------
@@ -35,6 +45,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--chunk-format", default="chunk{id}")
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--metrics-config", help="Path to metrics configuration JSON file")
+    parser.add_argument("--collection-name", default="sprayers", help="Name of the collection to use")
 
     return parser.parse_args()
 
@@ -64,18 +75,31 @@ def main() -> None:
         # 1. Run Pipeline (Retrieval + Metrics)
         asyncio.run(orchestrator.run())
         
-        # 2. Run Analysis
-        logger.info("📊 Running final performance analysis...")
-        analyzer = RAGMetricAnalyzer()
-        
+        if not args.metrics_config:
+            logger.error("❌ --metrics-config is required for analysis")
+            sys.exit(1)
+
+        analyzer = RAGMetricAnalyzer(
+            metrics_config_path=args.metrics_config
+        )
+
+        #2. Calculate the metrics
         retrieval_path = Path(args.output_dir) / "retriever_metrics.json"
         generation_path = Path(args.output_dir) / "generator_metrics.json"
         
-        analyzer.analyze(
+        results = analyzer.analyze(
             str(retrieval_path) if retrieval_path.exists() else None,
             str(generation_path) if generation_path.exists() else None
         )
         
+        # 3. Export Results and do analysis
+        if results and "categories" in results:
+            analysis_json = Path(args.output_dir) / "analysis_report.json"
+            analysis_csv = Path(args.output_dir) / "analysis_report.csv"
+            
+            export_json(results["categories"], str(analysis_json))
+            export_to_csv(results["categories"], str(analysis_csv))
+
         logger.info(f"✅ Pipeline and Analysis completed successfully")
 
     except Exception:

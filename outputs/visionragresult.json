@@ -1,0 +1,36 @@
+[
+  {
+    "qid": "q1_chunk1",
+    "question": "What is the maximum allowed tilt for a boom sprayer when installed on a tractor?",
+    "ground_truth_chunk_id": "chunk1",
+    "retrieved_chunk_ids": [
+      "chunk4",
+      "chunk2",
+      "chunk1"
+    ],
+    "generated_answer": "Hey there! That's a super important safety question about your boom sprayer! 🚜 Safety first, always! ✨\n\nWhen your boom sprayer is installed on the tractor, it's really crucial to maintain stability to prevent any accidents. The manual clearly states that **you must make sure it is not tilted more than 5°**.\n\nThis limit helps ensure your equipment operates safely and efficiently! It's also a good reminder to always operate on flat ground where possible, and to pay close attention to the tractor's weight balance. Document 2 highlights the importance of putting weights on the front side of the tractor so that the loads applied to the steering wheels are 20% or more of the overall weight. This helps prevent the front wheels from lifting and causing an accident, which could definitely lead to unwanted tilting!\n\nAlways remember to:\n*   Perform inspections on flat ground 🚧.\n*   Ensure the tractor engine and PTO are stopped when installing or inspecting, and apply the parking brake! 🛑\n*   Keep that weight balanced to prevent unexpected movements! 💪\n\nStay safe and happy spraying, farmer friend! 🌾😊",
+    "tag": "direct"
+  },
+  {
+    "qid": "q2_chunk1",
+    "question": "Why is it important to keep non-operators away from the pest control work area?",
+    "ground_truth_chunk_id": "chunk1",
+    "retrieved_chunk_ids": [
+      "chunk1"
+    ],
+    "generated_answer": "Hello there! 👋 That's a really important question for safety on the farm! 🌱\n\nIt is absolutely crucial to keep non-operators away from the area where pest control work is performed because, as the manual clearly states, **failure to do so may lead to an accident.** 🚫\n\nPest control involves using specialized equipment like boom sprayers and agrichemicals, which require careful handling. Keeping others away helps prevent several potential hazards:\n*   **Exposure to Chemicals:** Non-operators, including people and animals, could accidentally come into direct contact with the agrichemicals being sprayed, which can be harmful.\n*   **Machinery Accidents:** Moving machinery, especially a tractor with a sprayer, can pose a risk of impact or entanglement if someone is too close to the operating zone.\n*   **Distraction:** Their presence could distract the operator, leading to mistakes.\n\nEnsuring that only the trained operator is in the work area protects everyone from accidental exposure and prevents unforeseen incidents. It's all about creating a safe zone! 💖\n\n👀 Look at the illustration in  - here you'll see an operator on a tractor, wearing protective gear, and clearly signaling to keep a child with a dog, a chicken, and a horse away from the active work zone. This visual really highlights the importance of keeping *everyone* (people and animals) out of the danger area during spraying operations!\n\nAlways prioritize safety when working with agricultural equipment and chemicals! Stay safe and keep growing! 🚜✨",
+    "tag": "indirect"
+  },
+  {
+    "qid": "q3_chunk1",
+    "question": "How does the image visually reinforce the safety warning about keeping non-operators away from the work area?",
+    "ground_truth_chunk_id": "chunk1",
+    "retrieved_chunk_ids": [
+      "chunk1",
+      "chunk4",
+      "chunk3"
+    ],
+    "generated_answer": "That's a super important safety question! 🚧 Keeping everyone safe around agricultural equipment is always our top priority, and the manual definitely emphasizes this. Let's look at how the images help reinforce that crucial warning! 🌱\n\nThe manual clearly states: \"Keep non-operators away from the area where pest control work is performed. Failure to do so may lead to an accident.\" This is found in Document 1, under 'For Safe Work' point [4].\n\nOne of the images wonderfully illustrates this warning! 👀 Look at `` – here you'll see a person operating a boom sprayer attached to a tractor, and they're making a clear \"stop\" or \"stay back\" gesture with one hand while pointing away with the other! The image vividly shows a child, a dog on a leash, a chicken, and even a horse dangerously close to the tractor's work zone. This visual powerfully reinforces the text by showing exactly *who* non-operators might be (children, pets, farm animals) and how important it is for the operator to actively keep them away to prevent accidents. It really drives home the message of maintaining a safe perimeter during operations! 🚜✨\n\nIt's a fantastic visual reminder that the work area can be hazardous, and everyone not directly involved in the task needs to stay a safe distance away for their protection! Always be vigilant and make sure the area is clear before starting any work. Safety first, always! 😊🌟",
+    "tag": "image_based"
+  }
+]

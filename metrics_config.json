@@ -11,5 +11,17 @@
         "context_precision",
         "context_recall",
         "answer_correctness"
-    ]
+    ],
+    "metric_thresholds": {
+        "recall": 0.7,
+        "precision": 0.7,
+        "mrr": 0.7,
+        "faithfulness": 0.7,
+        "context_precision": 0.7,
+        "context_recall": 0.7,
+        "answer_correctness": 0.7,
+        "answer_relevancy": 0.7,
+        "retrieval_threshold": 0.5,
+        "generation_threshold": 0.5
+    }
 }

@@ -1,0 +1,64 @@
+[
+  {
+    "query_id": "q1_chunk1",
+    "query": "What is the maximum allowed tilt for a boom sprayer when installed on a tractor?",
+    "tag": "direct",
+    "category": "both_success",
+    "retrieval_score": 0.5555555555555555,
+    "generation_score": 0.53297598790065,
+    "retrieval_status": "HIT",
+    "hit_type": "late_hit",
+    "outcome": "generator_ignoring_context",
+    "retrieval_metrics": {
+      "qid": "q1_chunk1",
+      "query": "What is the maximum allowed tilt for a boom sprayer when installed on a tractor?",
+      "tag": "direct",
+      "rank": 3,
+      "mrr": 0.3333333333333333,
+      "precision": 0.3333333333333333,
+      "ndcg": 0.5,
+      "recall": 1
+    },
+    "generation_metrics": {
+      "qid": "q1_chunk1",
+      "query": "What is the maximum allowed tilt for a boom sprayer when installed on a tractor?",
+      "tag": "direct",
+      "faithfulness": 0.375,
+      "answer_relevancy": 0.9943278544018698,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.22960010930008048
+    }
+  },
+  {
+    "query_id": "q2_chunk1",
+    "query": "Why is it important to keep non-operators away from the pest control work area?",
+    "tag": "indirect",
+    "category": "both_success",
+    "retrieval_score": 0.7777777777777777,
+    "generation_score": 0.7289480841070753,
+    "retrieval_status": "HIT",
+    "hit_type": "early_hit",
+    "outcome": "generator_ignoring_context",
+    "retrieval_metrics": {
+      "qid": "q2_chunk1",
+      "query": "Why is it important to keep non-operators away from the pest control work area?",
+      "tag": "indirect",
+      "rank": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333,
+      "ndcg": 1.0,
+      "recall": 1
+    },
+    "generation_metrics": {
+      "qid": "q2_chunk1",
+      "query": "Why is it important to keep non-operators away from the pest control work area?",
+      "tag": "indirect",
+      "faithfulness": 0.59375,
+      "answer_relevancy": 0.9542524276609492,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.6388418246602765
+    }
+  }
+]

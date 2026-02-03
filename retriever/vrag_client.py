@@ -10,8 +10,11 @@ VISIONRAG_URL = "http://127.0.0.1:8000/api/v1/users/{user_id}/chat"
 class VisionRAGClient:
     """Handles VisionRAG API interactions and response parsing."""
 
-    def __init__(self, timeout: int = 120):
+    """Handles VisionRAG API interactions and response parsing."""
+
+    def __init__(self, timeout: int = 120, collection_name: str = "sprayers"):
         self.timeout = timeout
+        self.collection_name = collection_name
 
     async def query(
         self,
@@ -33,7 +36,8 @@ class VisionRAGClient:
         payload = {
             "user_id": user_id,
             "message": question,
-            "thread_id": thread_id or f"{user_id}_retrieval_eval"
+            "thread_id": thread_id or f"{user_id}_retrieval_eval",
+            "collection_names": [self.collection_name]
         }
 
         raw_chunks: List[str] = []

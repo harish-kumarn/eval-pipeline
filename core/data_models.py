@@ -114,5 +114,5 @@ class PipelineConfig:
     user_id: str = "43"
     k: int = 3
     chunk_format: str = "chunk{id}"
-    retriever_timeout: int = 300
+    retriever_timeout: int = 600
     metrics_config_path: Optional[str] = None

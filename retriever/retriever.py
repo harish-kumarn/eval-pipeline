@@ -22,11 +22,12 @@ class VisionRAGRetriever(IRetriever):
         user_id: str = "43",
         timeout: int = 120,
         chunk_format: str = "chunk{id}",
+        collection_name: str = "sprayers",
     ):
-        logger.debug(f"Initializing VisionRAGRetriever (user_id={user_id}, timeout={timeout}s, chunk_format={chunk_format})")
+        logger.debug(f"Initializing VisionRAGRetriever (user_id={user_id}, timeout={timeout}s, chunk_format={chunk_format}, collection={collection_name})")
         self.user_id = user_id
         self.chunk_format = chunk_format
-        self.client = VisionRAGClient(timeout=timeout)
+        self.client = VisionRAGClient(timeout=timeout, collection_name=collection_name)
         logger.debug("✓ VisionRAGRetriever initialized")
 
     async def retrieve(self, question: Question) -> RetrievalResult:

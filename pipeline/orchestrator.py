@@ -1,3 +1,4 @@
+import re
 import json
 import logging
 from pathlib import Path
@@ -17,7 +18,12 @@ from utils.file_handler import FileHandler
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 
-logger = logging.getLogger(__name__)
+from rich.console import Console
+from rich.logging import RichHandler
+
+# Configure logger with RichHandler for better formatting if standard logging is still used elsewhere
+logger = logging.getLogger("rich")
+console = Console()
 
 
 class EvaluationOrchestrator:
@@ -53,10 +59,13 @@ class EvaluationOrchestrator:
         visionrag_file = self.output_dir / "visionragresult.json"
         all_results = []
 
-        logger.info(f"🚀 Retrieving results for {len(questions)} queries...")
-        for q in questions:
+        console.rule("[bold blue]Retrieval Phase[/bold blue]")
+        console.log(f"[bold green]Retrieving results for {len(questions)} queries...[/bold green]")
+        
+        for i, q in enumerate(questions, 1):
+            console.log(f"[cyan]Processing question {i}/{len(questions)}: {q.qid}[/cyan]")
             result = await self.retriever.retrieve(q)
-
+            result.generated_answer = self.remove_images(result.generated_answer)
             entry = {
                 "qid": result.qid,
                 "question": result.question,
@@ -67,12 +76,28 @@ class EvaluationOrchestrator:
             }
 
             all_results.append(entry)
+            console.log(f"[green]✓[/green] Completed {q.qid}")
 
             with open(visionrag_file, "w", encoding="utf-8") as f:
                 json.dump(all_results, f, indent=2, ensure_ascii=False)
 
         return all_results
 
+    def remove_images(self, text: str) -> str:
+        """
+        This Function is used to remove images from the text
+        which has the format of `....text.... data:image/png;base64,/9j/4AA...`
+        """
+        console.log("Removing images from text")
+        console.log(text)
+        return re.sub(
+            r"data:image\/png;base64,[A-Za-z0-9+/=\n\r]+",
+            "",
+            text,
+            flags=re.DOTALL
+        )
+
+    
     def _compute_metrics(self, visionrag_file: Path) -> Dict[str, Any]:
         with open(visionrag_file, "r", encoding="utf-8") as f:
             retrieval_results = json.load(f)
@@ -102,24 +127,31 @@ class EvaluationOrchestrator:
         if self.config.metrics_config_path:
             config_path = Path(self.config.metrics_config_path)
             if config_path.exists():
-                logger.info(f"Loading metrics config from {config_path}")
+                console.log(f"[dim]Loading metrics config from {config_path}[/dim]")
                 with open(config_path, "r") as f:
                     metrics_config = json.load(f)
             else:
-                logger.warning(f"Metrics config file {config_path} not found. Using all metrics.")
+                console.print(f"[bold yellow]Metrics config file {config_path} not found. Using all metrics.[/bold yellow]")
 
         retrieval_req = metrics_config.get("retriever_metrics")
         generation_req = metrics_config.get("generation_metrics")
 
         results = {}
 
+        results = {}
+
         # 1. Retrieval Metrics
-        logger.info("Computing retrieval metrics...")
+        console.rule("[bold blue]Metrics Phase[/bold blue]")
+        console.log("[bold green]Computing retrieval metrics...[/bold green]")
+        
         retrieval_metrics = self.retrieval_calculator.compute(
             retrieval_results,
             k=self.config.k,
             requested_metrics=retrieval_req
         )
+        
+        console.log(f"[green]✅ Retrieval Metrics Computed[/green] [dim](MRR: {retrieval_metrics.mrr_at_k:.2f})[/dim]")
+
         retrieval_metrics_dict = retrieval_metrics.to_dict()
         FileHandler.save_json(
             retrieval_metrics_dict,
@@ -128,7 +160,7 @@ class EvaluationOrchestrator:
         results["retrieval_metrics"] = retrieval_metrics_dict
 
         # 2. Generation Metrics (RAGAS)
-        logger.info("Computing generation metrics...")
+        console.log("[bold green]Computing generation metrics (RAGAS)...[/bold green]")
         llm = LangchainLLMWrapper(GeminiLLM())
         embeddings = LangchainEmbeddingsWrapper(GeminiEmbeddings())
 
@@ -140,6 +172,7 @@ class EvaluationOrchestrator:
         )
         
         if generation_metrics:
+            console.log("[green]✅ Generation Metrics Computed[/green]")
             generation_metrics_dict = generation_metrics.to_dict()
             FileHandler.save_json(
                 generation_metrics_dict,
@@ -147,6 +180,6 @@ class EvaluationOrchestrator:
             )
             results["generation_metrics"] = generation_metrics_dict
         else:
-            logger.warning("No valid generation metrics to compute. Skipping generator metrics.")
+            console.print("[bold yellow]No valid generation metrics to compute. Skipping generator metrics.[/bold yellow]")
 
         return results

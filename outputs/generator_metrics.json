@@ -1,0 +1,29 @@
+{
+  "faithfulness": 0.484375,
+  "answer_relevancy": 0.9742901410314095,
+  "context_recall": 1.0,
+  "context_precision": 0.9999999999,
+  "answer_correctness": 0.4342209669801785,
+  "per_query_metrics": [
+    {
+      "qid": "q1_chunk1",
+      "query": "What is the maximum allowed tilt for a boom sprayer when installed on a tractor?",
+      "tag": "direct",
+      "faithfulness": 0.375,
+      "answer_relevancy": 0.9943278544018698,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.22960010930008048
+    },
+    {
+      "qid": "q2_chunk1",
+      "query": "Why is it important to keep non-operators away from the pest control work area?",
+      "tag": "indirect",
+      "faithfulness": 0.59375,
+      "answer_relevancy": 0.9542524276609492,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.6388418246602765
+    }
+  ]
+}

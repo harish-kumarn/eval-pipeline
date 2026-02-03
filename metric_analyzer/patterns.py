@@ -7,41 +7,47 @@ class RAGFlowResult:
     outcome: str  # hallucination_from_prior, complete_failure, generator_ignoring_context, partial_answer, successful_rag
     hit_type: Optional[str] = None  # early_hit, late_hit
 
-def analyze_rag_flow(retrieval_metrics: Dict, generation_metrics: Dict, thresholds: Dict) -> RAGFlowResult:
-    # 1. Was ground truth retrieved? (We can use recall or a specific 'hit' flag if we had it)
+def analyze_rag_flow(
+    retrieval_metrics: Dict,
+    generation_metrics: Dict,
+    thresholds: Dict
+) -> RAGFlowResult:
 
-    recall = retrieval_metrics.get('recall', 0)
-    is_hit = recall > 0 
-    
-    # Ragas metrics
-    relevancy = generation_metrics.get('answer_relevancy', 0)
-    faithfulness = generation_metrics.get('faithfulness', 0)
-    correctness = generation_metrics.get('answer_correctness', 0)
-    
-    # Thresholds
-    f_low = thresholds.get('faithfulness', 0.7)
-    c_low = thresholds.get('answer_correctness', 0.7)
-    rel_high = thresholds.get('answer_relevancy', 0.7)
+    recall = retrieval_metrics.get("recall", 0.0)
+    is_hit = recall > 0.0
+
+    relevancy = generation_metrics.get("answer_relevancy", 0.0)
+    faithfulness = generation_metrics.get("faithfulness", 0.0)
+    correctness = generation_metrics.get("answer_correctness", 0.0)
+
+    f_min = thresholds.get("faithfulness", 0.0)
+    c_min = thresholds.get("answer_correctness", 0.0)
+    rel_min = thresholds.get("answer_relevancy", 0.0)
 
     if not is_hit:
-        # retrieval_status = "MISS"
-        if relevancy >= rel_high:
+        if relevancy >= rel_min and faithfulness < f_min:
             outcome = "hallucination_from_prior"
         else:
             outcome = "complete_failure"
-        return RAGFlowResult(retrieval_status="MISS", outcome=outcome)
+
+        return RAGFlowResult(
+            retrieval_status="MISS",
+            outcome=outcome
+        )
+
+    # HIT
+    mrr = retrieval_metrics.get("mrr", 0.0)
+    hit_type = "early_hit" if mrr >= 0.999 else "late_hit"
+
+    if faithfulness < f_min:
+        outcome = "generator_ignoring_context"
+    elif correctness < c_min:
+        outcome = "partial_answer"
     else:
-        # retrieval_status = "HIT"
-        # Is Rank == 1? (We can use MRR to infer this: MRR=1 means Rank=1)
-        mrr = retrieval_metrics.get('mrr', 0)
-        hit_type = "early_hit" if mrr == 1.0 else "late_hit"
-        
-        if faithfulness < f_low:
-            outcome = "generator_ignoring_context"
-        else:
-            if correctness < c_low:
-                outcome = "partial_answer"
-            else:
-                outcome = "successful_rag"
-                
-        return RAGFlowResult(retrieval_status="HIT", hit_type=hit_type, outcome=outcome)
+        outcome = "successful_rag"
+
+    return RAGFlowResult(
+        retrieval_status="HIT",
+        hit_type=hit_type,
+        outcome=outcome
+    )
