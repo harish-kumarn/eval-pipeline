@@ -19,7 +19,7 @@ class VisionRAGRetriever(IRetriever):
 
     def __init__(
         self,
-        user_id: str = "43",
+        user_id: str = "1234",
         timeout: int = 120,
         chunk_format: str = "chunk{id}",
         collection_name: str = "sprayers",

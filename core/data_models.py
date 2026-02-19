@@ -111,7 +111,7 @@ class PipelineConfig:
     """Configuration for the evaluation pipeline."""
     target_chunks_file: str
     output_dir: str
-    user_id: str = "43"
+    user_id: str = "1234"
     k: int = 3
     chunk_format: str = "chunk{id}"
     retriever_timeout: int = 600

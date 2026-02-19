@@ -1,41 +1,71 @@
 {
-  "mrr@k": 0.7777777777777778,
+  "mrr@k": 0.9166666666666666,
   "recall@k": 1.0,
   "precision@k": 0.3333333333333333,
-  "ndcg@k": 0.8333333333333334,
-  "mean_rank": 1.6666666666666667,
+  "ndcg@k": 0.9384882922619097,
+  "mean_rank": 1.1666666666666667,
   "k": 3,
-  "total_queries": 3,
+  "total_queries": 6,
   "per_query_metrics": [
     {
       "qid": "q1_chunk1",
-      "query": "What is the maximum allowed tilt for a boom sprayer when installed on a tractor?",
+      "query": "What is the maximum tilt angle allowed for a boom sprayer when installed on a tractor?",
       "tag": "direct",
-      "rank": 3,
-      "mrr": 0.3333333333333333,
+      "rank": 1,
+      "recall": 1,
+      "mrr": 1.0,
       "precision": 0.3333333333333333,
-      "ndcg": 0.5,
-      "recall": 1
+      "ndcg": 1.0
     },
     {
       "qid": "q2_chunk1",
-      "query": "Why is it important to keep non-operators away from the pest control work area?",
-      "tag": "indirect",
+      "query": "What protective gears are required for agrichemical spraying?",
+      "tag": "direct",
       "rank": 1,
+      "recall": 1,
       "mrr": 1.0,
       "precision": 0.3333333333333333,
-      "ndcg": 1.0,
-      "recall": 1
+      "ndcg": 1.0
     },
     {
       "qid": "q3_chunk1",
-      "query": "How does the image visually reinforce the safety warning about keeping non-operators away from the work area?",
-      "tag": "image_based",
+      "query": "What steps should be taken to safely inspect or service a boom sprayer while it is installed on the tractor?",
+      "tag": "direct",
+      "rank": 2,
+      "recall": 1,
+      "mrr": 0.5,
+      "precision": 0.3333333333333333,
+      "ndcg": 0.6309297535714575
+    },
+    {
+      "qid": "q4_chunk1",
+      "query": "Why is it important to keep non-operators away from the area where pest control work is performed?",
+      "tag": "indirect",
       "rank": 1,
+      "recall": 1,
       "mrr": 1.0,
       "precision": 0.3333333333333333,
-      "ndcg": 1.0,
-      "recall": 1
+      "ndcg": 1.0
+    },
+    {
+      "qid": "q5_chunk1",
+      "query": "What are the risks of not wearing protective gears during agrichemical spraying?",
+      "tag": "indirect",
+      "rank": 1,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333,
+      "ndcg": 1.0
+    },
+    {
+      "qid": "q6_chunk1",
+      "query": "Why is refueling near a fire source or while smoking strictly prohibited?",
+      "tag": "indirect",
+      "rank": 1,
+      "recall": 1,
+      "mrr": 1.0,
+      "precision": 0.3333333333333333,
+      "ndcg": 1.0
     }
   ]
 }

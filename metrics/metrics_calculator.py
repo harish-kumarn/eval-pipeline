@@ -56,7 +56,7 @@ class GeminiLLM(LLM):
 # =====================================================
 
 class GeminiEmbeddings(Embeddings):
-    model_name: str = "text-embedding-004"
+    model_name: str = "gemini-embedding-001"
     _dim: Optional[int] = None
 
     def _embed(self, text: str) -> List[float]:

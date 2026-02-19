@@ -1,36 +1,68 @@
 [
   {
     "qid": "q1_chunk1",
-    "question": "What is the maximum allowed tilt for a boom sprayer when installed on a tractor?",
+    "question": "What is the maximum tilt angle allowed for a boom sprayer when installed on a tractor?",
     "ground_truth_chunk_id": "chunk1",
     "retrieved_chunk_ids": [
-      "chunk4",
-      "chunk2",
-      "chunk1"
+      "chunk1",
+      "chunk2"
     ],
-    "generated_answer": "Hey there! That's a super important safety question about your boom sprayer! 🚜 Safety first, always! ✨\n\nWhen your boom sprayer is installed on the tractor, it's really crucial to maintain stability to prevent any accidents. The manual clearly states that **you must make sure it is not tilted more than 5°**.\n\nThis limit helps ensure your equipment operates safely and efficiently! It's also a good reminder to always operate on flat ground where possible, and to pay close attention to the tractor's weight balance. Document 2 highlights the importance of putting weights on the front side of the tractor so that the loads applied to the steering wheels are 20% or more of the overall weight. This helps prevent the front wheels from lifting and causing an accident, which could definitely lead to unwanted tilting!\n\nAlways remember to:\n*   Perform inspections on flat ground 🚧.\n*   Ensure the tractor engine and PTO are stopped when installing or inspecting, and apply the parking brake! 🛑\n*   Keep that weight balanced to prevent unexpected movements! 💪\n\nStay safe and happy spraying, farmer friend! 🌾😊",
+    "generated_answer": "こんにちは！😊 ブームスプレーヤーの傾斜角度についてですね。安全に作業を行うための大切なポイントですよ！\n\nトラクターにブームスプレーヤーを設置して作業を行う場合、**傾斜角度は5°を超えないようにしてくださいね！** 🌾 これを守ることで、安定した作業ができますよ。\n\n他にも、安全な作業のためにいくつか重要な注意点があります。\n\n*   作業中は、農薬散布用の保護具（防除マスク、保護メガネ、ゴム手袋、防水保護服など）を必ず着用して、薬剤が体に直接触れないようにしてくださいね。\n*   点検や整備は、必ず平らな場所で行いましょう。トラクターにブームスプレーヤーを設置したまま点検する場合は、必ずエンジンを停止し、パーキングブレーキをかけ、キーを抜き、ブームスプレーヤースタンドを伸ばしてから作業してくださいね。\n*   また、農薬散布作業中は、作業員以外の人を近づけないように注意してください。👀  のように、お子様やペットが作業エリアに入らないように気を配ることが大切です！\n*   水系（水道、河川、湖沼など）を汚染しないように、十分注意してくださいね。\n*   ブームスプレーヤーをトラクターに取り付ける際は、トラクターのフロントタイヤ（操舵輪）にかかる荷重が、総重量の20%以上になるように、前方にウェイトを取り付けて重量バランスを保つことがとても大切です！バランスが悪いと前輪が浮き上がり、事故につながる可能性がありますからね。\n\nこれらの安全対策をしっかり守って、安心で効果的な散布作業を心がけてくださいね！🚜✨こんにちは！😊 ブームスプレーヤーの傾斜角度についてですね。安全に作業を行うための大切なポイントですよ！\n\nトラクターにブームスプレーヤーを設置して作業を行う場合、**傾斜角度は5°を超えないようにしてくださいね！** 🌾 これを守ることで、安定した作業ができますよ。\n\n他にも、安全な作業のためにいくつか重要な注意点があります。\n\n*   作業中は、農薬散布用の保護具（防除マスク、保護メガネ、ゴム手袋、防水保護服など）を必ず着用して、薬剤が体に直接触れないようにしてくださいね。\n*   点検や整備は、必ず平らな場所で行いましょう。トラクターにブームスプレーヤーを設置したまま点検する場合は、必ずエンジンを停止し、パーキングブレーキをかけ、キーを抜き、ブームスプレーヤースタンドを伸ばしてから作業してくださいね。\n*   また、農薬散布作業中は、作業員以外の人を近づけないように注意してください。👀  のように、お子様やペットが作業エリアに入らないように気を配ることが大切です！\n*   水系（水道、河川、湖沼など）を汚染しないように、十分注意してくださいね。\n*   ブームスプレーヤーをトラクターに取り付ける際は、トラクターのフロントタイヤ（操舵輪）にかかる荷重が、総重量の20%以上になるように、前方にウェイトを取り付けて重量バランスを保つことがとても大切です！バランスが悪いと前輪が浮き上がり、事故につながる可能性がありますからね。\n\nこれらの安全対策をしっかり守って、安心で効果的な散布作業を心がけてくださいね！🚜✨",
     "tag": "direct"
   },
   {
     "qid": "q2_chunk1",
-    "question": "Why is it important to keep non-operators away from the pest control work area?",
-    "ground_truth_chunk_id": "chunk1",
-    "retrieved_chunk_ids": [
-      "chunk1"
-    ],
-    "generated_answer": "Hello there! 👋 That's a really important question for safety on the farm! 🌱\n\nIt is absolutely crucial to keep non-operators away from the area where pest control work is performed because, as the manual clearly states, **failure to do so may lead to an accident.** 🚫\n\nPest control involves using specialized equipment like boom sprayers and agrichemicals, which require careful handling. Keeping others away helps prevent several potential hazards:\n*   **Exposure to Chemicals:** Non-operators, including people and animals, could accidentally come into direct contact with the agrichemicals being sprayed, which can be harmful.\n*   **Machinery Accidents:** Moving machinery, especially a tractor with a sprayer, can pose a risk of impact or entanglement if someone is too close to the operating zone.\n*   **Distraction:** Their presence could distract the operator, leading to mistakes.\n\nEnsuring that only the trained operator is in the work area protects everyone from accidental exposure and prevents unforeseen incidents. It's all about creating a safe zone! 💖\n\n👀 Look at the illustration in  - here you'll see an operator on a tractor, wearing protective gear, and clearly signaling to keep a child with a dog, a chicken, and a horse away from the active work zone. This visual really highlights the importance of keeping *everyone* (people and animals) out of the danger area during spraying operations!\n\nAlways prioritize safety when working with agricultural equipment and chemicals! Stay safe and keep growing! 🚜✨",
-    "tag": "indirect"
-  },
-  {
-    "qid": "q3_chunk1",
-    "question": "How does the image visually reinforce the safety warning about keeping non-operators away from the work area?",
+    "question": "What protective gears are required for agrichemical spraying?",
     "ground_truth_chunk_id": "chunk1",
     "retrieved_chunk_ids": [
       "chunk1",
-      "chunk4",
+      "chunk2"
+    ],
+    "generated_answer": "こんにちは！😊 農薬散布作業、安全に行うことがとっても大切ですよね！🌱\n\n農薬散布時に必要な保護具について、マニュアルには以下のように記載されていますよ。\n\n散布を行う方は、**農薬散布用保護具**を必ず着用してくださいね！これには、具体的に以下のものが含まれます。\n*   防除マスク\n*   保護メガネ\n*   長靴\n*   ゴム手袋\n*   防水保護衣\n\nこれらを着用することで、薬剤が直接体に触れるのを防ぐことができますよ。👀  のイラストでも、オペレーターがマスクを着用して作業している様子が描かれていますね。\n\nさらに、安全に作業を進めるために、使用する農薬の「取扱説明書」と機器の「操作マニュアル」をしっかりと読み、正しく作業を行ってください。また、散布作業中は、小さなお子さんやペットなどの作業員以外の人が作業区域に近づかないように、十分な注意を払ってくださいね。これは事故を防ぐために非常に重要です！✨\n\n安全第一で、素晴らしい一日をお過ごしください！🌾こんにちは！😊 農薬散布作業、安全に行うことがとっても大切ですよね！🌱\n\n農薬散布時に必要な保護具について、マニュアルには以下のように記載されていますよ。\n\n散布を行う方は、**農薬散布用保護具**を必ず着用してくださいね！これには、具体的に以下のものが含まれます。\n*   防除マスク\n*   保護メガネ\n*   長靴\n*   ゴム手袋\n*   防水保護衣\n\nこれらを着用することで、薬剤が直接体に触れるのを防ぐことができますよ。👀  のイラストでも、オペレーターがマスクを着用して作業している様子が描かれていますね。\n\nさらに、安全に作業を進めるために、使用する農薬の「取扱説明書」と機器の「操作マニュアル」をしっかりと読み、正しく作業を行ってください。また、散布作業中は、小さなお子さんやペットなどの作業員以外の人が作業区域に近づかないように、十分な注意を払ってくださいね。これは事故を防ぐために非常に重要です！✨\n\n安全第一で、素晴らしい一日をお過ごしください！🌾",
+    "tag": "direct"
+  },
+  {
+    "qid": "q3_chunk1",
+    "question": "What steps should be taken to safely inspect or service a boom sprayer while it is installed on the tractor?",
+    "ground_truth_chunk_id": "chunk1",
+    "retrieved_chunk_ids": [
+      "chunk2",
+      "chunk1"
+    ],
+    "generated_answer": "こんにちは！🤗 ブームスプレイヤーをトラクターに装着したまま安全に点検・整備する方法ですね。大切な作業なので、しっかり確認しましょう！🌱\n\n安全に点検・整備を行うためには、以下の手順と注意点を守ってくださいね。\n\n1.  **事前の準備と確認:**\n    *   まず、トラクターとブームスプレイヤーの取扱説明書をよく読んで、操作に習熟してください。\n    *   農薬を使用する場合は、その取扱説明書も必ず読み、正しい方法で作業を行いましょう。\n2.  **作業場所とトラクターの停止:**\n    *   必ず平坦な場所で作業を行ってください。\n    *   トラクターのエンジンとPTOを完全に停止させてください。\n    *   パーキングブレーキをかけ、キーを抜いてください。\n    *   ブームスプレイヤースタンドを伸ばしてください。これを怠ると、トラクターが予期せず動き出し、事故につながる可能性があります。\n3.  **作業中の安全対策:**\n    *   トラクターとブームスプレイヤーの間に誰も立ち入らないようにしてください。重大な事故につながる可能性があります。\n    *   点検・整備作業中に、関係者以外の人が作業区域に近づかないように注意してください。 👀 [作業区域に子供や動物が近づかないように注意している様子] を  で確認してください。\n4.  **接続と安定性の確認:**\n    *   ユニバーサルジョイントがしっかりと接続されているか確認してください。接続が不十分だと故障の原因になります。\n    *   トラクターのステアリングホイール（前輪）にかかる荷重が総重量の20%以上になるよう、フロント側にウェイトを取り付けて重量バランスを確保してください。ウェイトのバランスが悪いと、トラクターの前輪が浮き上がり、事故の原因になります。\n5.  **個人用保護具の着用:**\n    *   噴霧作業を行う際は、防除マスク、保護メガネ、ブーツ、ゴム手袋、防水保護服などの防護具を必ず着用し、農薬が直接身体に触れないようにしてください。\n\nこれらの手順を厳守し、安全に作業を行ってくださいね！✨ いつも安全第一で、素晴らしい一日をお過ごしください！😊🌾こんにちは！🤗 ブームスプレイヤーをトラクターに装着したまま安全に点検・整備する方法ですね。大切な作業なので、しっかり確認しましょう！🌱\n\n安全に点検・整備を行うためには、以下の手順と注意点を守ってくださいね。\n\n1.  **事前の準備と確認:**\n    *   まず、トラクターとブームスプレイヤーの取扱説明書をよく読んで、操作に習熟してください。\n    *   農薬を使用する場合は、その取扱説明書も必ず読み、正しい方法で作業を行いましょう。\n2.  **作業場所とトラクターの停止:**\n    *   必ず平坦な場所で作業を行ってください。\n    *   トラクターのエンジンとPTOを完全に停止させてください。\n    *   パーキングブレーキをかけ、キーを抜いてください。\n    *   ブームスプレイヤースタンドを伸ばしてください。これを怠ると、トラクターが予期せず動き出し、事故につながる可能性があります。\n3.  **作業中の安全対策:**\n    *   トラクターとブームスプレイヤーの間に誰も立ち入らないようにしてください。重大な事故につながる可能性があります。\n    *   点検・整備作業中に、関係者以外の人が作業区域に近づかないように注意してください。 👀 [作業区域に子供や動物が近づかないように注意している様子] を  で確認してください。\n4.  **接続と安定性の確認:**\n    *   ユニバーサルジョイントがしっかりと接続されているか確認してください。接続が不十分だと故障の原因になります。\n    *   トラクターのステアリングホイール（前輪）にかかる荷重が総重量の20%以上になるよう、フロント側にウェイトを取り付けて重量バランスを確保してください。ウェイトのバランスが悪いと、トラクターの前輪が浮き上がり、事故の原因になります。\n5.  **個人用保護具の着用:**\n    *   噴霧作業を行う際は、防除マスク、保護メガネ、ブーツ、ゴム手袋、防水保護服などの防護具を必ず着用し、農薬が直接身体に触れないようにしてください。\n\nこれらの手順を厳守し、安全に作業を行ってくださいね！✨ いつも安全第一で、素晴らしい一日をお過ごしください！😊🌾",
+    "tag": "direct"
+  },
+  {
+    "qid": "q4_chunk1",
+    "question": "Why is it important to keep non-operators away from the area where pest control work is performed?",
+    "ground_truth_chunk_id": "chunk1",
+    "retrieved_chunk_ids": [
+      "chunk1",
+      "chunk2"
+    ],
+    "generated_answer": "rag_retrieverThat's a really important safety question, and it's fantastic that you're asking it again to ensure you have a clear understanding! 😄🌾\n\nIt is **absolutely crucial** to keep non-operators away from the area where pest control work is performed because, as the manual clearly states, **failure to do so may lead to an accident**. 🌱\n\nThis rule is in place for several very important reasons:\n*   **Protection from Chemicals**: Agrichemicals used in pest control can be harmful. Non-operators might not be wearing the proper protective gear, making them vulnerable to exposure.\n*   **Safety from Machinery**: Tractors and sprayers have moving parts and can be dangerous. Keeping a safe distance prevents accidental contact with the equipment.\n*   **Preventing Accidents**: The overall environment during pest control can be dynamic and unpredictable. Keeping a clear zone minimizes the risk of any unforeseen incidents.\n\nThe image in [image removed] visually reinforces this, showing an operator signaling to keep children and animals away from the active work zone.\n\nAlways prioritize safety to ensure a wonderful and secure environment for everyone on the farm! 🚜✨rag_retrieverThat's a really important safety question, and it's fantastic that you're asking it again to ensure you have a clear understanding! 😄🌾\n\nIt is **absolutely crucial** to keep non-operators away from the area where pest control work is performed because, as the manual clearly states, **failure to do so may lead to an accident**. 🌱\n\nThis rule is in place for several very important reasons:\n*   **Protection from Chemicals**: Agrichemicals used in pest control can be harmful. Non-operators might not be wearing the proper protective gear, making them vulnerable to exposure.\n*   **Safety from Machinery**: Tractors and sprayers have moving parts and can be dangerous. Keeping a safe distance prevents accidental contact with the equipment.\n*   **Preventing Accidents**: The overall environment during pest control can be dynamic and unpredictable. Keeping a clear zone minimizes the risk of any unforeseen incidents.\n\nThe image in [image removed] visually reinforces this, showing an operator signaling to keep children and animals away from the active work zone.\n\nAlways prioritize safety to ensure a wonderful and secure environment for everyone on the farm! 🚜✨",
+    "tag": "indirect"
+  },
+  {
+    "qid": "q5_chunk1",
+    "question": "What are the risks of not wearing protective gears during agrichemical spraying?",
+    "ground_truth_chunk_id": "chunk1",
+    "retrieved_chunk_ids": [
+      "chunk1",
+      "chunk2"
+    ],
+    "generated_answer": "わぁ、とっても大切な安全に関するご質問ですね！✨ 農薬散布中に保護具を着用しない場合、農薬が直接体に触れてしまう危険性がありますよ🚨 これは避けたい状況です。\n\nマニュアルによると、散布作業を行う人は、薬剤が体に直接接触するのを防ぐために、以下のような農薬散布用保護具を必ず着用するよう指示されています。\n\n*   殺虫マスク\n*   保護メガネ\n*   長靴\n*   ゴム手袋\n*   防水保護服\n\nこれらの保護具をきちんと身につけることで、大切な体を守ることができますよ。😊\n\n作業を行う際は、必ずご使用になる農薬の取扱説明書もよく読んで、正しい方法で安全に作業を進めてくださいね！🌾 いつも安全第一でいきましょう！👍わぁ、とっても大切な安全に関するご質問ですね！✨ 農薬散布中に保護具を着用しない場合、農薬が直接体に触れてしまう危険性がありますよ🚨 これは避けたい状況です。\n\nマニュアルによると、散布作業を行う人は、薬剤が体に直接接触するのを防ぐために、以下のような農薬散布用保護具を必ず着用するよう指示されています。\n\n*   殺虫マスク\n*   保護メガネ\n*   長靴\n*   ゴム手袋\n*   防水保護服\n\nこれらの保護具をきちんと身につけることで、大切な体を守ることができますよ。😊\n\n作業を行う際は、必ずご使用になる農薬の取扱説明書もよく読んで、正しい方法で安全に作業を進めてくださいね！🌾 いつも安全第一でいきましょう！👍",
+    "tag": "indirect"
+  },
+  {
+    "qid": "q6_chunk1",
+    "question": "Why is refueling near a fire source or while smoking strictly prohibited?",
+    "ground_truth_chunk_id": "chunk1",
+    "retrieved_chunk_ids": [
+      "chunk1",
       "chunk3"
     ],
-    "generated_answer": "That's a super important safety question! 🚧 Keeping everyone safe around agricultural equipment is always our top priority, and the manual definitely emphasizes this. Let's look at how the images help reinforce that crucial warning! 🌱\n\nThe manual clearly states: \"Keep non-operators away from the area where pest control work is performed. Failure to do so may lead to an accident.\" This is found in Document 1, under 'For Safe Work' point [4].\n\nOne of the images wonderfully illustrates this warning! 👀 Look at `` – here you'll see a person operating a boom sprayer attached to a tractor, and they're making a clear \"stop\" or \"stay back\" gesture with one hand while pointing away with the other! The image vividly shows a child, a dog on a leash, a chicken, and even a horse dangerously close to the tractor's work zone. This visual powerfully reinforces the text by showing exactly *who* non-operators might be (children, pets, farm animals) and how important it is for the operator to actively keep them away to prevent accidents. It really drives home the message of maintaining a safe perimeter during operations! 🚜✨\n\nIt's a fantastic visual reminder that the work area can be hazardous, and everyone not directly involved in the task needs to stay a safe distance away for their protection! Always be vigilant and make sure the area is clear before starting any work. Safety first, always! 😊🌟",
-    "tag": "image_based"
+    "generated_answer": "こんにちは！お尋ねいただきありがとうございます😊 燃料の補給に関する安全はとっても大切ですね！\n\nマニュアルには、火気の近くでの燃料補給は火災の原因となるため、絶対に行わないよう明記されています。また、喫煙中の燃料補給も厳しく禁止されていますよ。\n\nこれは、燃料が非常に引火しやすい性質を持っているため、わずかな火花や熱源でも大事故につながる可能性があるからなんです。作業を行う際は、必ず周囲の安全をしっかり確認して、火気から離れた場所で燃料補給を行ってくださいね。安全第一で、楽しい農作業を心がけましょう！🚜💨こんにちは！お尋ねいただきありがとうございます😊 燃料の補給に関する安全はとっても大切ですね！\n\nマニュアルには、火気の近くでの燃料補給は火災の原因となるため、絶対に行わないよう明記されています。また、喫煙中の燃料補給も厳しく禁止されていますよ。\n\nこれは、燃料が非常に引火しやすい性質を持っているため、わずかな火花や熱源でも大事故につながる可能性があるからなんです。作業を行う際は、必ず周囲の安全をしっかり確認して、火気から離れた場所で燃料補給を行ってくださいね。安全第一で、楽しい農作業を心がけましょう！🚜💨",
+    "tag": "indirect"
   }
 ]
