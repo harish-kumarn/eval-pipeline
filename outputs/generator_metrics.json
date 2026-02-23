@@ -1,69 +1,69 @@
 {
-  "faithfulness": 0.6047300362976407,
-  "answer_relevancy": 0.9219931850576527,
+  "faithfulness": 0.4999295695289611,
+  "answer_relevancy": 0.9877324051895089,
   "context_recall": 1.0,
   "context_precision": 0.9999999999,
-  "answer_correctness": 0.4352258519247045,
+  "answer_correctness": 0.5039365921151352,
   "per_query_metrics": [
     {
       "qid": "q1_chunk1",
       "query": "What is the maximum tilt angle allowed for a boom sprayer when installed on a tractor?",
       "tag": "direct",
-      "faithfulness": 0.55,
-      "answer_relevancy": 0.9292233206282732,
+      "faithfulness": 0.375,
+      "answer_relevancy": 0.9910470416524993,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.24951494449294664
+      "answer_correctness": 0.3649831431310594
     },
     {
       "qid": "q2_chunk1",
       "query": "What protective gears are required for agrichemical spraying?",
       "tag": "direct",
-      "faithfulness": 0.8125,
-      "answer_relevancy": 0.9028380514995987,
+      "faithfulness": 0.5,
+      "answer_relevancy": 0.9854288554279248,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.5290190585414288
+      "answer_correctness": 0.5871229076706017
     },
     {
       "qid": "q3_chunk1",
       "query": "What steps should be taken to safely inspect or service a boom sprayer while it is installed on the tractor?",
       "tag": "direct",
-      "faithfulness": 0.3448275862068966,
-      "answer_relevancy": 0.9086353226358526,
+      "faithfulness": 0.7058823529411765,
+      "answer_relevancy": 0.9826560200026981,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.42725314959724947
+      "answer_correctness": 0.4512364299151417
     },
     {
       "qid": "q4_chunk1",
       "query": "Why is it important to keep non-operators away from the area where pest control work is performed?",
       "tag": "indirect",
-      "faithfulness": 0.42105263157894735,
-      "answer_relevancy": 0.9932739377887444,
+      "faithfulness": 0.4166666666666667,
+      "answer_relevancy": 0.9825289018646569,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.41265818409433097
+      "answer_correctness": 0.47306845662768193
     },
     {
       "qid": "q5_chunk1",
       "query": "What are the risks of not wearing protective gears during agrichemical spraying?",
       "tag": "indirect",
-      "faithfulness": 1.0,
-      "answer_relevancy": 0.9090809739272964,
+      "faithfulness": 0.41379310344827586,
+      "answer_relevancy": 0.9847336121892737,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.4999503670190572
+      "answer_correctness": 0.4032556353773741
     },
     {
       "qid": "q6_chunk1",
       "query": "Why is refueling near a fire source or while smoking strictly prohibited?",
       "tag": "indirect",
-      "faithfulness": 0.5,
-      "answer_relevancy": 0.8889075038661507,
+      "faithfulness": 0.5882352941176471,
+      "answer_relevancy": 0.9999999999999999,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.49295940780321396
+      "answer_correctness": 0.7439529799689526
     }
   ]
 }

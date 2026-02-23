@@ -355,29 +355,61 @@ def telemetry_analysis_page():
                     
                     if not data:
                         st.info(f"Waiting for data in {db_name}.{col_name}...")
-                    else:
-                        df = pd.DataFrame(data)
-                        
-                        # Flatten 'totals' if exists
-                        if 'totals' in df.columns:
-                            totals_df = pd.json_normalize(df['totals'])
-                            required_totals = ['gemini_input', 'gemini_output', 'cohere_total', 'cohere_embed', 'cohere_rerank']
-                            for col in required_totals:
-                                if col not in totals_df.columns:
-                                    totals_df[col] = 0
-                            df = pd.concat([df.drop(columns=['totals']), totals_df], axis=1)
-                        
-                        # Ensure basic columns exist
-                        for col in ['username', 'thread_id', 'query', 'timestamp', 'latency_seconds']:
-                            if col not in df.columns:
-                                if col == 'latency_seconds':
-                                    df[col] = 0
-                                else:
-                                    df[col] = "Unknown"
-                        
+                     else:
+                        # ── Schema normalisation ───────────────────────────
+                        # Real schema:
+                        #   usage.gemini.{agent_1_call_1, agent_1_call_2?, agent_2}
+                        #   usage.cohere.{embed, rerank}
+                        #   metadata.username
+                        raw_df = pd.DataFrame(data)
+
+                        def _parse_row(doc):
+                            gemini = doc.get('usage', {}).get('gemini', {})
+                            cohere = doc.get('usage', {}).get('cohere', {})
+
+                            # Aggregate Gemini tokens across all agents
+                            g_input, g_output = 0, 0
+                            for agent_val in gemini.values():
+                                if isinstance(agent_val, dict):
+                                    g_input  += agent_val.get('input_tokens',  0) or agent_val.get('prompt_token_count',     0)
+                                    g_output += agent_val.get('output_tokens', 0) or agent_val.get('candidates_token_count', 0)
+
+                            c_embed  = cohere.get('embed',  {}).get('input_tokens', 0)
+                            c_rerank = cohere.get('rerank', {}).get('search_units', 0)
+
+                            return {
+                                'gemini_input':  g_input,
+                                'gemini_output': g_output,
+                                'cohere_embed':  c_embed,
+                                'cohere_rerank': c_rerank,
+                                'cohere_total':  c_embed + c_rerank,
+                                'gemini_usage':  gemini,  # kept for agent-level breakdown tab
+                            }
+
+                        df = pd.DataFrame([_parse_row(d) for d in data])
+
+                        # Pull top-level fields from raw_df
+                        for field in ['user_id', 'query', 'thread_id', 'timestamp', 'latency_seconds']:
+                            if field in raw_df.columns:
+                                df[field] = raw_df[field].values
+                            else:
+                                df[field] = 0 if field == 'latency_seconds' else 'Unknown'
+
+                        # username lives in metadata
+                        if 'metadata' in raw_df.columns:
+                            df['username'] = raw_df['metadata'].apply(
+                                lambda m: m.get('username', 'Unknown') if isinstance(m, dict) else 'Unknown'
+                            ).values
+                        elif 'username' in raw_df.columns:
+                            df['username'] = raw_df['username'].values
+                        else:
+                            df['username'] = 'Unknown'
+
                         # Convert timestamp to datetime
                         if 'timestamp' in df.columns:
                             df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+
                         
                         # ========== EXECUTIVE SUMMARY ==========
                         st.header("📊 Executive Summary")
@@ -388,23 +420,12 @@ def telemetry_analysis_page():
                         unique_threads = df['thread_id'].nunique()
                         avg_latency = df['latency_seconds'].mean()
                         
-                        # Cost estimation (example pricing - adjust as needed)
-                        GEMINI_INPUT_COST_PER_1M = 0.075  # $0.075 per 1M tokens
-                        GEMINI_OUTPUT_COST_PER_1M = 0.30   # $0.30 per 1M tokens
-                        COHERE_EMBED_COST_PER_1M = 0.10    # $0.10 per 1M tokens
-                        COHERE_RERANK_COST_PER_1K_SEARCHES = 2.00  # $2.00 per 1K searches
                         
                         total_gemini_input = df['gemini_input'].sum()
                         total_gemini_output = df['gemini_output'].sum()
                         total_cohere_embed = df['cohere_embed'].sum()
                         total_cohere_rerank = df['cohere_rerank'].sum()
                         
-                        estimated_cost = (
-                            (total_gemini_input / 1_000_000 * GEMINI_INPUT_COST_PER_1M) +
-                            (total_gemini_output / 1_000_000 * GEMINI_OUTPUT_COST_PER_1M) +
-                            (total_cohere_embed / 1_000_000 * COHERE_EMBED_COST_PER_1M) +
-                            (total_cohere_rerank / 1_000 * COHERE_RERANK_COST_PER_1K_SEARCHES)
-                        )
                         
                         m1, m2, m3, m4, m5, m6 = st.columns(6)
                         with m1:
@@ -418,70 +439,8 @@ def telemetry_analysis_page():
                         with m6:
                             st.metric("Last Update", datetime.now().strftime("%H:%M:%S"))
                         
-                        # ========== COST BREAKDOWN ==========
-                        st.markdown("---")
-                        st.header("💰 Cost Analysis")
                         
-                        col_cost1, col_cost2, col_cost3 = st.columns(3)
-                        
-                        with col_cost1:
-                            st.subheader("Cost by Provider")
-                            gemini_cost = (total_gemini_input / 1_000_000 * GEMINI_INPUT_COST_PER_1M) + \
-                                        (total_gemini_output / 1_000_000 * GEMINI_OUTPUT_COST_PER_1M)
-                            cohere_cost = (total_cohere_embed / 1_000_000 * COHERE_EMBED_COST_PER_1M) + \
-                                        (total_cohere_rerank / 1_000 * COHERE_RERANK_COST_PER_1K_SEARCHES)
-                            
-                            fig_cost_provider = px.pie(
-                                values=[gemini_cost, cohere_cost],
-                                names=['Gemini', 'Cohere'],
-                                title='Cost Distribution by Provider',
-                                color_discrete_sequence=['#4285F4', '#FF7F50']
-                            )
-                            st.plotly_chart(fig_cost_provider, width='stretch')
-                        
-                        with col_cost2:
-                            st.subheader("Cost Per User")
-                            user_costs = df.groupby('username').apply(
-                                lambda x: (
-                                    (x['gemini_input'].sum() / 1_000_000 * GEMINI_INPUT_COST_PER_1M) +
-                                    (x['gemini_output'].sum() / 1_000_000 * GEMINI_OUTPUT_COST_PER_1M) +
-                                    (x['cohere_embed'].sum() / 1_000_000 * COHERE_EMBED_COST_PER_1M) +
-                                    (x['cohere_rerank'].sum() / 1_000 * COHERE_RERANK_COST_PER_1K_SEARCHES)
-                                )
-                            ).reset_index(name='cost')
-                            
-                            fig_user_cost = px.bar(
-                                user_costs.sort_values('cost', ascending=False).head(10),
-                                x='username',
-                                y='cost',
-                                title='Top 10 Users by Cost',
-                                labels={'cost': 'Cost ($)', 'username': 'User'}
-                            )
-                            st.plotly_chart(fig_user_cost, width='stretch')
-                        
-                        with col_cost3:
-                            st.subheader("Cost Over Time")
-                            if 'timestamp' in df.columns:
-                                df['hour'] = df['timestamp'].dt.floor('H')
-                                hourly_costs = df.groupby('hour').apply(
-                                    lambda x: (
-                                        (x['gemini_input'].sum() / 1_000_000 * GEMINI_INPUT_COST_PER_1M) +
-                                        (x['gemini_output'].sum() / 1_000_000 * GEMINI_OUTPUT_COST_PER_1M) +
-                                        (x['cohere_embed'].sum() / 1_000_000 * COHERE_EMBED_COST_PER_1M) +
-                                        (x['cohere_rerank'].sum() / 1_000 * COHERE_RERANK_COST_PER_1K_SEARCHES)
-                                    )
-                                ).reset_index(name='cost')
-                                
-                                fig_time_cost = px.line(
-                                    hourly_costs,
-                                    x='hour',
-                                    y='cost',
-                                    title='Hourly Cost Trend',
-                                    labels={'cost': 'Cost ($)', 'hour': 'Time'}
-                                )
-                                st.plotly_chart(fig_time_cost, width='stretch')
-                        
-                        # ========== PERFORMANCE INSIGHTS ==========
+                            # ========== PERFORMANCE INSIGHTS ==========
                         st.markdown("---")
                         st.header("⚡ Performance Insights")
                         
