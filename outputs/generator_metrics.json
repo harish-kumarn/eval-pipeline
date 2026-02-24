@@ -1,69 +1,79 @@
 {
-  "faithfulness": 0.4999295695289611,
-  "answer_relevancy": 0.9877324051895089,
+  "faithfulness": 0.7795770482105885,
+  "answer_relevancy": 0.9675822231627282,
   "context_recall": 1.0,
   "context_precision": 0.9999999999,
-  "answer_correctness": 0.5039365921151352,
+  "answer_correctness": 0.6241598660823807,
   "per_query_metrics": [
     {
       "qid": "q1_chunk1",
-      "query": "What is the maximum tilt angle allowed for a boom sprayer when installed on a tractor?",
+      "query": "What is the maximum tilt angle allowed for a boom sprayer installed on a tractor?",
       "tag": "direct",
-      "faithfulness": 0.375,
-      "answer_relevancy": 0.9910470416524993,
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.9848477802733312,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.3649831431310594
+      "answer_correctness": 0.4748603843042676
     },
     {
       "qid": "q2_chunk1",
-      "query": "What protective gears are required for agrichemical spraying?",
+      "query": "What protective equipment should be worn by a person performing agrichemical spraying?",
       "tag": "direct",
-      "faithfulness": 0.5,
-      "answer_relevancy": 0.9854288554279248,
+      "faithfulness": 0.3333333333333333,
+      "answer_relevancy": 0.9902957158813095,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.5871229076706017
+      "answer_correctness": 0.47956126856884146
     },
     {
       "qid": "q3_chunk1",
-      "query": "What steps should be taken to safely inspect or service a boom sprayer while it is installed on the tractor?",
+      "query": "What are the essential steps to safely inspect or service a boom sprayer while it is still installed on the tractor?",
       "tag": "direct",
-      "faithfulness": 0.7058823529411765,
-      "answer_relevancy": 0.9826560200026981,
+      "faithfulness": 0.75,
+      "answer_relevancy": 0.9933148438097118,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.4512364299151417
+      "answer_correctness": 0.5200630651302544
     },
     {
       "qid": "q4_chunk1",
-      "query": "Why is it important to keep non-operators away from the area where pest control work is performed?",
-      "tag": "indirect",
-      "faithfulness": 0.4166666666666667,
-      "answer_relevancy": 0.9825289018646569,
+      "query": "Where is refueling strictly prohibited?",
+      "tag": "direct",
+      "faithfulness": 0.7142857142857143,
+      "answer_relevancy": 0.8698128904447032,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.47306845662768193
+      "answer_correctness": 0.8160813533713268
     },
     {
       "qid": "q5_chunk1",
-      "query": "What are the risks of not wearing protective gears during agrichemical spraying?",
+      "query": "Why is it important to wear protective gears when performing agrichemical spraying?",
       "tag": "indirect",
-      "faithfulness": 0.41379310344827586,
-      "answer_relevancy": 0.9847336121892737,
+      "faithfulness": 0.8260869565217391,
+      "answer_relevancy": 0.9690073031540972,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.4032556353773741
+      "answer_correctness": 0.49446565557247857
     },
     {
       "qid": "q6_chunk1",
-      "query": "Why is refueling near a fire source or while smoking strictly prohibited?",
+      "query": "What potential hazard is associated with not taking the specified safety measures when inspecting or servicing a boom sprayer on a tractor?",
       "tag": "indirect",
-      "faithfulness": 0.5882352941176471,
-      "answer_relevancy": 0.9999999999999999,
+      "faithfulness": 0.8333333333333334,
+      "answer_relevancy": 0.9804075975070154,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_correctness": 0.7439529799689526
+      "answer_correctness": 0.884068763174035
+    },
+    {
+      "qid": "q7_chunk1",
+      "query": "What are the environmental concerns explicitly mentioned regarding boom sprayer operation?",
+      "tag": "indirect",
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.9853894310689292,
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_correctness": 0.7000185724554613
     }
   ]
 }

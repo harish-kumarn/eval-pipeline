@@ -49,6 +49,8 @@ class VisionRAGRetriever(IRetriever):
             retrieved_docs = response.get("retrieved_docs", [])
             logger.debug(f"  Retrieved {len(retrieved_docs)} documents")
             
+            logger.info(f"Retrieved docs: {retrieved_docs}")
+            
             retrieved_chunk_ids = ChunkMetadataExtractor.extract_chunk_ids(
                 retrieved_docs,
                 chunk_format=self.chunk_format,

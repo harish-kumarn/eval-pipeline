@@ -13,6 +13,7 @@ from metrics.metrics_calculator import (
     GeminiLLM,
     GeminiEmbeddings,
 )
+from metrics.token_tracker import TokenTracker
 from utils.file_handler import FileHandler
 
 from ragas.llms import LangchainLLMWrapper
@@ -161,16 +162,20 @@ class EvaluationOrchestrator:
 
         # 2. Generation Metrics (RAGAS)
         console.log("[bold green]Computing generation metrics (RAGAS)...[/bold green]")
-        llm = LangchainLLMWrapper(GeminiLLM())
-        embeddings = LangchainEmbeddingsWrapper(GeminiEmbeddings())
+
+        # Create a shared token tracker and inject into Gemini LLM + Embeddings
+        tracker = TokenTracker()
+        llm = LangchainLLMWrapper(GeminiLLM(tracker=tracker))
+        embeddings = LangchainEmbeddingsWrapper(GeminiEmbeddings(tracker=tracker))
 
         generation_metrics = self.generation_calculator.compute(
             generation_data,
             llm_wrapper=llm,
             embeddings_wrapper=embeddings,
-            requested_metrics=generation_req
+            requested_metrics=generation_req,
+            tracker=tracker,
         )
-        
+
         if generation_metrics:
             console.log("[green]✅ Generation Metrics Computed[/green]")
             generation_metrics_dict = generation_metrics.to_dict()
@@ -181,6 +186,23 @@ class EvaluationOrchestrator:
             results["generation_metrics"] = generation_metrics_dict
         else:
             console.print("[bold yellow]No valid generation metrics to compute. Skipping generator metrics.[/bold yellow]")
+
+        # 3. Save token usage report
+        console.log("[bold green]Saving token usage report...[/bold green]")
+        token_summary = tracker.get_summary()
+        FileHandler.save_json(
+            token_summary,
+            self.output_dir / "token_usage.json",
+        )
+        total = token_summary["total"]
+        console.log(
+            f"[green]✅ Token Usage Saved[/green] "
+            f"[dim](prompt={total['prompt_tokens']:,}, "
+            f"completion={total['completion_tokens']:,}, "
+            f"embed≈{total['embedding_tokens']:,}, "
+            f"total={total['total_tokens']:,})[/dim]"
+        )
+        results["token_usage"] = token_summary
 
         return results
 

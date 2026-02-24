@@ -1,7 +1,7 @@
 import math
 import logging
 import os
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -11,6 +11,7 @@ import google.generativeai as genai
 from langchain_core.language_models.llms import LLM
 from langchain_core.embeddings import Embeddings
 from core.data_models import RetrievalMetrics, GenerationMetrics
+from metrics.token_tracker import TokenTracker
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -21,6 +22,10 @@ logger = logging.getLogger(__name__)
 
 class GeminiLLM(LLM):
     model_name: str = "gemini-2.5-flash"
+    tracker: Optional[Any] = None  # TokenTracker instance (Any to keep Pydantic happy)
+
+    class Config:
+        arbitrary_types_allowed = True
 
     @property
     def _llm_type(self) -> str:
@@ -41,6 +46,17 @@ class GeminiLLM(LLM):
         model = genai.GenerativeModel(self.model_name)
         response = model.generate_content(prompt)
 
+        # --- Token tracking ---
+        if self.tracker is not None:
+            try:
+                usage = response.usage_metadata
+                self.tracker.record_llm(
+                    prompt_tokens=usage.prompt_token_count or 0,
+                    completion_tokens=usage.candidates_token_count or 0,
+                )
+            except Exception as te:
+                logger.debug(f"Token tracking failed: {te}")
+
         text = response.text if response and response.text else ""
 
         if stop:
@@ -56,8 +72,12 @@ class GeminiLLM(LLM):
 # =====================================================
 
 class GeminiEmbeddings(Embeddings):
-    model_name: str = "gemini-embedding-001"
-    _dim: Optional[int] = None
+
+    def __init__(self, model_name: str = "gemini-embedding-001", tracker=None):
+        # Embeddings is a plain ABC (not Pydantic), so we need explicit __init__
+        self.model_name = model_name
+        self.tracker = tracker
+        self._dim: Optional[int] = None
 
     def _embed(self, text: str) -> List[float]:
         api_key = os.getenv("GOOGLE_API_KEY")
@@ -74,6 +94,14 @@ class GeminiEmbeddings(Embeddings):
 
         if self._dim is None:
             self._dim = len(vec)
+
+        # --- Token tracking (estimate: word count) ---
+        if self.tracker is not None:
+            try:
+                estimated = len(text.split())
+                self.tracker.record_embedding(estimated)
+            except Exception as te:
+                logger.debug(f"Embedding token tracking failed: {te}")
 
         return vec
 
@@ -206,7 +234,7 @@ class GenerationMetricsCalculator(MetricsCalculator):
         self.evaluate = evaluate
         self.RunConfig = RunConfig
         self.Dataset = Dataset
-        
+
         self.metric_map = {
             "faithfulness": faithfulness,
             "answer_relevancy": answer_relevancy,
@@ -215,24 +243,33 @@ class GenerationMetricsCalculator(MetricsCalculator):
             "answer_correctness": answer_correctness,
         }
 
-    def compute(self, data, llm_wrapper, embeddings_wrapper, requested_metrics: Optional[List[str]] = None) -> GenerationMetrics:
+    def compute(
+        self,
+        data,
+        llm_wrapper,
+        embeddings_wrapper,
+        requested_metrics: Optional[List[str]] = None,
+        tracker: Optional[TokenTracker] = None,
+    ) -> GenerationMetrics:
         if not llm_wrapper or not embeddings_wrapper:
             raise RuntimeError("RAGAS requires llm_wrapper and embeddings_wrapper")
 
-        metrics_to_run = []
+        # Resolve which metrics to run
+        metrics_to_run: Dict[str, Any] = {}
         if requested_metrics:
             for m in requested_metrics:
                 if m in self.metric_map:
-                    metrics_to_run.append(self.metric_map[m])
+                    metrics_to_run[m] = self.metric_map[m]
                 else:
                     logger.warning(f"Generation metric '{m}' not recognized. Skipping.")
         else:
-            metrics_to_run = list(self.metric_map.values())
+            metrics_to_run = dict(self.metric_map)
 
         if not metrics_to_run:
             logger.warning("No valid generation metrics to compute. Returning None.")
             return None
 
+        # Filter valid samples
         valid = []
         for d in data:
             contexts = [c for c in d.get("contexts", []) if isinstance(c, str) and c.strip()]
@@ -248,58 +285,85 @@ class GenerationMetricsCalculator(MetricsCalculator):
             logger.warning("No valid samples for RAGAS evaluation. Skipping.")
             return None
 
-        dataset = self.Dataset.from_dict({
-            "question": [str(d["question"]) for d in valid],
-            "answer": [str(d["answer"]) for d in valid],
-            "ground_truth": [str(d["ground_truth"]) for d in valid],
-            "contexts": [d["contexts"] for d in valid],
-        })
+        # -------------------------------------------------------
+        # Evaluate ONE question × ONE metric at a time so the
+        # tracker can tag every LLM/embedding call with (qid, metric).
+        # -------------------------------------------------------
+        # results[qid][metric] = score
+        results_by_q: Dict[str, Dict[str, float]] = {
+            d["qid"]: {} for d in valid if d.get("qid")
+        }
 
+        for m_name, m_obj in metrics_to_run.items():
+            logger.info(f"  ↳ Evaluating metric: {m_name}")
 
-        results = self.evaluate(
-            dataset,
-            metrics=metrics_to_run,
-            llm=llm_wrapper,
-            embeddings=embeddings_wrapper,
-            run_config=self.RunConfig(timeout=600),
-        )
+            for d in valid:
+                qid = d.get("qid") or "_unknown_"
 
-        df = results.to_pandas()
-        
-        # Replace NaN with 0.0 for calculations and report
-        # We use a copy for per_query to avoid mutating the DF if not needed, 
-        # but here we want the metrics to be clean.
+                if tracker is not None:
+                    tracker.set_context(metric=m_name, qid=qid)
+
+                single_ds = self.Dataset.from_dict({
+                    "question":    [str(d["question"])],
+                    "answer":      [str(d["answer"])],
+                    "ground_truth":[str(d["ground_truth"])],
+                    "contexts":    [d["contexts"]],
+                })
+
+                try:
+                    result = self.evaluate(
+                        single_ds,
+                        metrics=[m_obj],
+                        llm=llm_wrapper,
+                        embeddings=embeddings_wrapper,
+                        run_config=self.RunConfig(timeout=600),
+                    )
+                    df = result.to_pandas()
+                    score = float(df[m_name].iloc[0]) if m_name in df.columns else 0.0
+                    if math.isnan(score):
+                        logger.warning(f"Metric '{m_name}' is NaN for qid={qid}. Setting to 0.0.")
+                        score = 0.0
+                except Exception as e:
+                    logger.error(f"Failed to evaluate '{m_name}' for qid={qid}: {e}")
+                    score = 0.0
+
+                if tracker is not None:
+                    tracker.clear_context()
+
+                if qid not in results_by_q:
+                    results_by_q[qid] = {}
+                results_by_q[qid][m_name] = score
+
+        # -------------------------------------------------------
+        # Build per-query list and compute aggregate means
+        # -------------------------------------------------------
         per_query = []
-        for i, row in df.iterrows():
-            qid = valid[i].get("qid")
-            metric_res = {
-                "qid": qid,
-                "query": valid[i].get("question"),
-                "tag": valid[i].get("tag")
-            }
-            has_nan = False
-            for m_name in self.metric_map:
-                if m_name in row:
-                    val = row[m_name]
-                    if isinstance(val, (float, int)) and math.isnan(val):
-                        logger.warning(f"Metric '{m_name}' is NaN for query ID {qid}. Setting to 0.0.")
-                        val = 0.0
-                        has_nan = True
-                    metric_res[m_name] = float(val)
-            per_query.append(metric_res)
+        agg: Dict[str, List[float]] = {m: [] for m in metrics_to_run}
 
-        def get_mean(col_name):
-            if col_name in df:
-                # mean() ignores NaN by default. If all are NaN, it returns NaN.
-                val = df[col_name].mean()
-                return float(val) if not math.isnan(val) else 0.0
-            return None
+        for d in valid:
+            qid = d.get("qid") or "_unknown_"
+            q_scores = results_by_q.get(qid, {})
+            entry = {
+                "qid":   qid,
+                "query": d.get("question", ""),
+                "tag":   d.get("tag", ""),
+            }
+            for m_name in metrics_to_run:
+                score = q_scores.get(m_name, 0.0)
+                entry[m_name] = score
+                agg[m_name].append(score)
+            per_query.append(entry)
+
+        def _mean(m):
+            vals = agg.get(m, [])
+            return float(sum(vals) / len(vals)) if vals else None
 
         return GenerationMetrics(
-            faithfulness=float(df["faithfulness"].mean()) if "faithfulness" in df else None,
-            answer_relevancy=float(df["answer_relevancy"].mean()) if "answer_relevancy" in df else None,
-            context_recall=float(df["context_recall"].mean()) if "context_recall" in df else None,
-            context_precision=float(df["context_precision"].mean()) if "context_precision" in df else None,
-            answer_correctness=float(df["answer_correctness"].mean()) if "answer_correctness" in df else None,
+            faithfulness=_mean("faithfulness"),
+            answer_relevancy=_mean("answer_relevancy"),
+            context_recall=_mean("context_recall"),
+            context_precision=_mean("context_precision"),
+            answer_correctness=_mean("answer_correctness"),
             per_query_metrics=per_query,
         )
+
