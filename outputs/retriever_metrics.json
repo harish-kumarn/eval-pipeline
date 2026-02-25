@@ -5,77 +5,27 @@
   "ndcg@k": 1.0,
   "mean_rank": 1.0,
   "k": 3,
-  "total_queries": 7,
+  "total_queries": 2,
   "per_query_metrics": [
     {
       "qid": "q1_chunk1",
-      "query": "What is the maximum tilt angle allowed for a boom sprayer installed on a tractor?",
+      "query": "What is the maximum permissible tilt angle for a boom sprayer when installed on a tractor?",
       "tag": "direct",
       "rank": 1,
-      "precision": 0.3333333333333333,
-      "recall": 1,
       "ndcg": 1.0,
-      "mrr": 1.0
+      "mrr": 1.0,
+      "recall": 1,
+      "precision": 0.3333333333333333
     },
     {
       "qid": "q2_chunk1",
-      "query": "What protective equipment should be worn by a person performing agrichemical spraying?",
-      "tag": "direct",
-      "rank": 1,
-      "precision": 0.3333333333333333,
-      "recall": 1,
-      "ndcg": 1.0,
-      "mrr": 1.0
-    },
-    {
-      "qid": "q3_chunk1",
-      "query": "What are the essential steps to safely inspect or service a boom sprayer while it is still installed on the tractor?",
-      "tag": "direct",
-      "rank": 1,
-      "precision": 0.3333333333333333,
-      "recall": 1,
-      "ndcg": 1.0,
-      "mrr": 1.0
-    },
-    {
-      "qid": "q4_chunk1",
-      "query": "Where is refueling strictly prohibited?",
-      "tag": "direct",
-      "rank": 1,
-      "precision": 0.3333333333333333,
-      "recall": 1,
-      "ndcg": 1.0,
-      "mrr": 1.0
-    },
-    {
-      "qid": "q5_chunk1",
-      "query": "Why is it important to wear protective gears when performing agrichemical spraying?",
+      "query": "What potential hazard arises if non-operators are present in the pest control work area?",
       "tag": "indirect",
       "rank": 1,
-      "precision": 0.3333333333333333,
-      "recall": 1,
       "ndcg": 1.0,
-      "mrr": 1.0
-    },
-    {
-      "qid": "q6_chunk1",
-      "query": "What potential hazard is associated with not taking the specified safety measures when inspecting or servicing a boom sprayer on a tractor?",
-      "tag": "indirect",
-      "rank": 1,
-      "precision": 0.3333333333333333,
+      "mrr": 1.0,
       "recall": 1,
-      "ndcg": 1.0,
-      "mrr": 1.0
-    },
-    {
-      "qid": "q7_chunk1",
-      "query": "What are the environmental concerns explicitly mentioned regarding boom sprayer operation?",
-      "tag": "indirect",
-      "rank": 1,
-      "precision": 0.3333333333333333,
-      "recall": 1,
-      "ndcg": 1.0,
-      "mrr": 1.0
+      "precision": 0.3333333333333333
     }
   ]
 }

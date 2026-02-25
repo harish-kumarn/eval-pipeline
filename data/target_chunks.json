@@ -1,60 +1,37 @@
 {
     "chunk1": {
-        "text": "For Safe Work\n\n## (1) Overview\n\nCarefully read the “Operation Manual” and instruction manual of the agrichemical used, to carry out work correctly and safely.\n\n[1] When using the boom sprayer installed on the tractor, make sure it is not tilted more than 5°.\n\n[2] The person performing spraying should wear protective gears for agrichemical spraying (such as a pest control mask, protective glasses, boots, rubber gloves and waterproof protective cloth, etc.) to prevent the reagent from coming in direct contact with the body.\n\n[3] Inspect/service and repair the boom sprayer on flat ground. To inspect/service the boom sprayer while still installed on the tractor, stop the engine on flat ground, apply the parking brake, remove the key, and extend the boom sprayer stand. Failure to do so may cause the tractor to move unexpectedly, resulting in an accident.\n\n[5] Keep non-operators away from the area where pest control work is performed. Failure to do so may lead to an accident.\n\n[6] Exercise due caution not to pollute water supply systems, rivers, lakes, ponds, etc.\n\n[7] Never refuel near a fire source as it may cause fire. Refueling while smoking is strictly prohibited.",
-        "images": [],
-        "chunk_description": "General safety guidelines and precautions for safe work with a boom sprayer, including PPE and environmental protection.",
+        "text": "1\n\nFor Safe Work\n\n## (1) Overview\n\nCarefully read the “Operation Manual” and instruction manual of the agrichemical used, to carry out work correctly and safely.\n\n[1] When using the boom sprayer installed on the tractor, make sure it is not tilted more than 5°.\n\n[2] The person performing spraying should wear protective gears for agrichemical spraying (such as a pest control mask, protective glasses, boots, rubber gloves and waterproof protective cloth, etc.) to prevent the reagent from coming in direct contact with the body.\n\n[3] Inspect/service and repair the boom sprayer on flat ground. To inspect/service the boom sprayer while still installed on the tractor, stop the engine on flat ground, apply the parking brake, remove the key, and extend the boom sprayer stand. Failure to do so may cause the tractor to move unexpectedly, resulting in an accident.\n\n[5] Keep non-operators away from the area where pest control work is performed. Failure to do so may lead to an accident.\n\n[6] Exercise due caution not to pollute water supply systems, rivers, lakes, ponds, etc.\n\n[7] Never refuel near a fire source as it may cause fire. Refueling while smoking is strictly prohibited.",
+        "images": [
+            "pdf_images/page_1_img_1.png"
+        ],
+        "chunk_description": "General safety guidelines and essential precautions for boom sprayer operation, including PPE requirements, inspection procedures, and refueling safety.",
         "overlapping": false,
         "overlapping_reason": "",
-        "semantic_completeness_score": 9.2,
+        "semantic_completeness_score": 9.5,
         "questions": {
             "direct": [
                 {
-                    "question": "What is the maximum tilt angle allowed for a boom sprayer installed on a tractor?",
-                    "answer_extract": "5°",
+                    "question": "What is the maximum permissible tilt angle for a boom sprayer when installed on a tractor?",
+                    "answer_extract": "When using the boom sprayer installed on the tractor, make sure it is not tilted more than 5°.",
                     "confidence": 0.98
-                },
-                {
-                    "question": "What protective equipment should be worn by a person performing agrichemical spraying?",
-                    "answer_extract": "protective gears for agrichemical spraying (such as a pest control mask, protective glasses, boots, rubber gloves and waterproof protective cloth, etc.)",
-                    "confidence": 0.97
-                },
-                {
-                    "question": "What are the essential steps to safely inspect or service a boom sprayer while it is still installed on the tractor?",
-                    "answer_extract": "stop the engine on flat ground, apply the parking brake, remove the key, and extend the boom sprayer stand",
-                    "confidence": 0.95
-                },
-                {
-                    "question": "Where is refueling strictly prohibited?",
-                    "answer_extract": "near a fire source as it may cause fire. Refueling while smoking is strictly prohibited.",
-                    "confidence": 0.96
                 }
             ],
             "indirect": [
                 {
-                    "question": "Why is it important to wear protective gears when performing agrichemical spraying?",
-                    "answer_extract": "To prevent the agrichemical reagent from coming in direct contact with the body, which could cause harm.",
-                    "confidence": 0.9
-                },
-                {
-                    "question": "What potential hazard is associated with not taking the specified safety measures when inspecting or servicing a boom sprayer on a tractor?",
-                    "answer_extract": "Failure to stop the engine, apply the parking brake, remove the key, and extend the stand may cause the tractor to move unexpectedly, resulting in an accident.",
+                    "question": "What potential hazard arises if non-operators are present in the pest control work area?",
+                    "answer_synthesis": "Failure to keep non-operators away from the area where pest control work is performed may lead to an accident.",
                     "confidence": 0.88
-                },
-                {
-                    "question": "What are the environmental concerns explicitly mentioned regarding boom sprayer operation?",
-                    "answer_extract": "Due caution must be exercised not to pollute water supply systems, rivers, lakes, ponds, and similar water bodies.",
-                    "confidence": 0.85
                 }
             ]
         },
-        "index_concept_vocabulary": "boom sprayer safety, tractor installation precautions, PPE, chemical handling, environmental protection, weight balancing, universal joint, startup inspection",
+        "index_concept_vocabulary": "boom sprayer safety, agrichemical handling, protective equipment, tractor installation precautions, weight balance, universal joint, startup inspection, environmental pollution, refueling safety",
         "layout_complexity": "moderate",
         "layout_complexity_score": 5,
         "layout_elements": [
             "text_blocks",
-            "numbered_lists",
-            "headings",
-            "image"
+            "lists",
+            "diagrams",
+            "warnings"
         ],
         "ocr_corrections": [],
         "content_continuation": {

@@ -100,7 +100,7 @@ class TokenTracker:
 
         for ev in self._events:
             qid    = ev["qid"]    or "_unknown_"
-            metricanswer_correctness = ev["metric"] or "_unknown_"
+            metric = ev["metric"] or "_unknown_"
 
             totals_by_q_m[qid][metric]["prompt"]     += ev["prompt"]
             totals_by_q_m[qid][metric]["completion"] += ev["completion"]

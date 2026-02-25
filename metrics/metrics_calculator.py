@@ -227,7 +227,6 @@ class GenerationMetricsCalculator(MetricsCalculator):
             answer_relevancy,
             context_precision,
             context_recall,
-            answer_correctness,
         )
         from datasets import Dataset
 
@@ -240,7 +239,6 @@ class GenerationMetricsCalculator(MetricsCalculator):
             "answer_relevancy": answer_relevancy,
             "context_precision": context_precision,
             "context_recall": context_recall,
-            "answer_correctness": answer_correctness,
         }
 
     def compute(
@@ -251,66 +249,74 @@ class GenerationMetricsCalculator(MetricsCalculator):
         requested_metrics: Optional[List[str]] = None,
         tracker: Optional[TokenTracker] = None,
     ) -> GenerationMetrics:
+
         if not llm_wrapper or not embeddings_wrapper:
             raise RuntimeError("RAGAS requires llm_wrapper and embeddings_wrapper")
 
-        # Resolve which metrics to run
+        # -----------------------------
+        # Resolve metrics
+        # -----------------------------
         metrics_to_run: Dict[str, Any] = {}
+        known_custom_metrics = ["answer_correctness"]
+
         if requested_metrics:
             for m in requested_metrics:
                 if m in self.metric_map:
                     metrics_to_run[m] = self.metric_map[m]
+                elif m in known_custom_metrics:
+                    # Recognized but handled via custom logic later
+                    continue
                 else:
                     logger.warning(f"Generation metric '{m}' not recognized. Skipping.")
         else:
             metrics_to_run = dict(self.metric_map)
 
         if not metrics_to_run:
-            logger.warning("No valid generation metrics to compute. Returning None.")
+            logger.warning("No valid generation metrics to compute.")
             return None
 
+        # -----------------------------
         # Filter valid samples
+        # -----------------------------
         valid = []
         for d in data:
             contexts = [c for c in d.get("contexts", []) if isinstance(c, str) and c.strip()]
+
             if (
                 d.get("question", "").strip()
                 and d.get("answer", "").strip()
                 and d.get("ground_truth", "").strip()
                 and contexts
             ):
-                valid.append({**d, "contexts": contexts})
+                qid = d.get("qid", "_unknown_")
+                valid.append({**d, "qid": qid, "contexts": contexts})
 
         if not valid:
-            logger.warning("No valid samples for RAGAS evaluation. Skipping.")
+            logger.warning("No valid samples for RAGAS evaluation.")
             return None
 
-        # -------------------------------------------------------
-        # Evaluate ONE question × ONE metric at a time so the
-        # tracker can tag every LLM/embedding call with (qid, metric).
-        # -------------------------------------------------------
-        # results[qid][metric] = score
-        results_by_q: Dict[str, Dict[str, float]] = {
-            d["qid"]: {} for d in valid if d.get("qid")
-        }
+        # -----------------------------
+        # Run evaluation per metric per question
+        # -----------------------------
+        results_by_q: Dict[str, Dict[str, float]] = {d["qid"]: {} for d in valid}
 
         for m_name, m_obj in metrics_to_run.items():
-            logger.info(f"  ↳ Evaluating metric: {m_name}")
+            logger.info(f"↳ Evaluating metric: {m_name}")
 
             for d in valid:
-                qid = d.get("qid") or "_unknown_"
+                qid = d["qid"]
 
                 if tracker is not None:
                     tracker.set_context(metric=m_name, qid=qid)
 
-                single_ds = self.Dataset.from_dict({
-                    "question":    [str(d["question"])],
-                    "answer":      [str(d["answer"])],
-                    "ground_truth":[str(d["ground_truth"])],
-                    "contexts":    [d["contexts"]],
-                })
-
                 try:
+                    single_ds = self.Dataset.from_dict({
+                        "question": [str(d["question"])],
+                        "answer": [str(d["answer"])],
+                        "ground_truth": [str(d["ground_truth"])],
+                        "contexts": [d["contexts"]],
+                    })
+
                     result = self.evaluate(
                         single_ds,
                         metrics=[m_obj],
@@ -318,40 +324,76 @@ class GenerationMetricsCalculator(MetricsCalculator):
                         embeddings=embeddings_wrapper,
                         run_config=self.RunConfig(timeout=600),
                     )
+
                     df = result.to_pandas()
                     score = float(df[m_name].iloc[0]) if m_name in df.columns else 0.0
+
                     if math.isnan(score):
-                        logger.warning(f"Metric '{m_name}' is NaN for qid={qid}. Setting to 0.0.")
+                        logger.warning(f"{m_name} is NaN for qid={qid}, setting 0.0")
                         score = 0.0
+
                 except Exception as e:
-                    logger.error(f"Failed to evaluate '{m_name}' for qid={qid}: {e}")
+                    logger.error(f"Failed metric '{m_name}' for qid={qid}: {e}")
                     score = 0.0
 
-                if tracker is not None:
-                    tracker.clear_context()
+                finally:
+                    if tracker is not None:
+                        tracker.clear_context()
 
-                if qid not in results_by_q:
-                    results_by_q[qid] = {}
                 results_by_q[qid][m_name] = score
 
-        # -------------------------------------------------------
-        # Build per-query list and compute aggregate means
-        # -------------------------------------------------------
-        per_query = []
-        agg: Dict[str, List[float]] = {m: [] for m in metrics_to_run}
+        # -----------------------------
+        # Custom Answer Correctness (per query)
+        # -----------------------------
+        logger.info("↳ Evaluating custom answer_correctness")
 
         for d in valid:
-            qid = d.get("qid") or "_unknown_"
+            qid = d["qid"]
+
+            ac_score = self.compute_answer_correctness(
+                qid=qid,
+                question=d["question"],
+                generated_answer=d["answer"],
+                answer_extract=d["ground_truth"],
+                contexts=d["contexts"],
+                llm_wrapper=llm_wrapper,
+                embeddings_wrapper=embeddings_wrapper,
+                tracker=tracker,
+            )
+
+            results_by_q[qid]["answer_correctness"] = ac_score
+
+        # -----------------------------
+        # Aggregate results
+        # -----------------------------
+        per_query = []
+
+        agg: Dict[str, List[float]] = {
+            **{m: [] for m in metrics_to_run},
+            "answer_correctness": [],
+        }
+
+        for d in valid:
+            qid = d["qid"]
             q_scores = results_by_q.get(qid, {})
+
             entry = {
-                "qid":   qid,
+                "qid": qid,
                 "query": d.get("question", ""),
-                "tag":   d.get("tag", ""),
+                "tag": d.get("tag", ""),
             }
+
+            # built-in metrics
             for m_name in metrics_to_run:
                 score = q_scores.get(m_name, 0.0)
                 entry[m_name] = score
                 agg[m_name].append(score)
+
+            # custom correctness
+            ac = q_scores.get("answer_correctness", 0.0)
+            entry["answer_correctness"] = ac
+            agg["answer_correctness"].append(ac)
+
             per_query.append(entry)
 
         def _mean(m):
@@ -367,3 +409,58 @@ class GenerationMetricsCalculator(MetricsCalculator):
             per_query_metrics=per_query,
         )
 
+
+    # =====================================================
+    # Standalone Answer Correctness Function
+    # =====================================================
+
+    @staticmethod
+    def compute_answer_correctness(
+        qid: str,
+        question: str,
+        generated_answer: str,
+        answer_extract: str,
+        contexts: List[str],
+        llm_wrapper,
+        embeddings_wrapper,
+        tracker: Optional[TokenTracker] = None,
+    ) -> float:
+
+        from ragas.metrics import answer_correctness
+        from ragas import evaluate, RunConfig
+        from datasets import Dataset
+
+        if tracker is not None:
+            tracker.set_context(metric="answer_correctness", qid=qid)
+
+        try:
+            dataset = Dataset.from_dict({
+                "question": [question],
+                "answer": [generated_answer],
+                "ground_truth": [answer_extract],
+                "contexts": [contexts],
+            })
+
+            result = evaluate(
+                dataset,
+                metrics=[answer_correctness],
+                llm=llm_wrapper,
+                embeddings=embeddings_wrapper,
+                run_config=RunConfig(timeout=600),
+            )
+
+            df = result.to_pandas()
+            score = float(df["answer_correctness"].iloc[0]) if "answer_correctness" in df.columns else 0.0
+
+            if math.isnan(score):
+                score = 0.0
+
+            return score
+
+        except Exception as e:
+            logger.error(f"Failed answer_correctness for qid={qid}: {e}")
+            return 0.0
+
+        finally:
+            if tracker is not None:
+                tracker.clear_context()
