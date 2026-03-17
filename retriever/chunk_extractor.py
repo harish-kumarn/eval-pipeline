@@ -76,3 +76,6 @@ class ChunkMetadataExtractor:
 
         # Format according to template
         return format_string.format(id=numeric_part)
+
+
+        

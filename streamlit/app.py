@@ -355,7 +355,7 @@ def telemetry_analysis_page():
                     
                     if not data:
                         st.info(f"Waiting for data in {db_name}.{col_name}...")
-                     else:
+                    else:
                         # ── Schema normalisation ───────────────────────────
                         # Real schema:
                         #   usage.gemini.{agent_1_call_1, agent_1_call_2?, agent_2}

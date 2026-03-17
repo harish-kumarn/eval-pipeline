@@ -1,15 +1,15 @@
 import json
 import re
 from typing import List, Dict, Any, Optional
+
 import httpx
+from config.config_loader import load_config
 
-
-VISIONRAG_URL = "http://127.0.0.1:8000/api/v1/users/{user_id}/chat"
+config = load_config("config/config.yml")
+VISIONRAG_URL = config["VISIONRAG_URL"]
 
 
 class VisionRAGClient:
-    """Handles VisionRAG API interactions and response parsing."""
-
     """Handles VisionRAG API interactions and response parsing."""
 
     def __init__(self, timeout: int = 120, collection_name: str = "sprayers"):
@@ -24,12 +24,12 @@ class VisionRAGClient:
     ) -> Dict[str, Any]:
         """
         Query VisionRAG and parse retrieved documents.
-        
+
         Args:
             user_id: User identifier
             question: Query question
             thread_id: Optional thread identifier
-            
+
         Returns:
             Dict containing question, retrieved_docs, answer, and raw_stream_preview
         """
@@ -59,7 +59,6 @@ class VisionRAGClient:
                 async for chunk in response.aiter_text():
                     raw_chunks.append(chunk)
 
-                    # Check for retrieval output marker
                     if chunk.startswith("__RETRIEVED_DOCS__"):
                         raw = chunk[len("__RETRIEVED_DOCS__"):]
                         retrieved_docs = self._parse_json(raw)
@@ -77,7 +76,7 @@ class VisionRAGClient:
             "question": question,
             "retrieved_docs": retrieved_docs,
             "answer": answer.strip(),
-            "raw_stream_preview": raw_chunks[:5]
+            "raw_stream_preview": raw_chunks[:5],
         }
 
     @staticmethod
@@ -93,14 +92,12 @@ class VisionRAGClient:
         """Extract JSON from combined stream as fallback."""
         combined = "".join(raw_chunks)
 
-        # Try marker-based extraction
         if "__RETRIEVED_DOCS__" in combined:
             raw = combined.split("__RETRIEVED_DOCS__", 1)[1]
             parsed = VisionRAGClient._parse_json(raw)
             if parsed:
                 return parsed
 
-        # Try regex-based JSON array extraction
         match = re.search(r"(\[\s*\{.*?\}\s*\])", combined, re.DOTALL)
         if match:
             parsed = VisionRAGClient._parse_json(match.group(1))

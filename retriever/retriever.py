@@ -1,21 +1,16 @@
+"""VisionRAG retriever: queries the VisionRAG API and returns structured results."""
+
 import logging
-from pathlib import Path
-from typing import List, Dict, Any
 
-logger = logging.getLogger(__name__)
-
-from core.interfaces import IRetriever
 from core.data_models import Question, RetrievalResult
-
-# Both VisionRAGClient and ChunkMetadataExtractor are in the same directory as this file
 from .vrag_client import VisionRAGClient
 from .chunk_extractor import ChunkMetadataExtractor
 
-logger.debug("Retriever imports completed")
+logger = logging.getLogger(__name__)
 
 
-class VisionRAGRetriever(IRetriever):
-    """Retriever that hits VisionRAG API."""
+class VisionRAGRetriever:
+    """Retriever implementation that queries the VisionRAG API."""
 
     def __init__(
         self,
@@ -24,41 +19,41 @@ class VisionRAGRetriever(IRetriever):
         chunk_format: str = "chunk{id}",
         collection_name: str = "sprayers",
     ):
-        logger.debug(f"Initializing VisionRAGRetriever (user_id={user_id}, timeout={timeout}s, chunk_format={chunk_format}, collection={collection_name})")
-        self.user_id = user_id
+        logger.debug(
+            "Initializing VisionRAGRetriever (user_id=%s, timeout=%ds, "
+            "chunk_format=%s, collection=%s)",
+            user_id, timeout, chunk_format, collection_name,
+        )
+        self.user_id      = user_id
         self.chunk_format = chunk_format
-        self.client = VisionRAGClient(timeout=timeout, collection_name=collection_name)
+        self.client       = VisionRAGClient(timeout=timeout, collection_name=collection_name)
         logger.debug("✓ VisionRAGRetriever initialized")
 
     async def retrieve(self, question: Question) -> RetrievalResult:
-        """Public interface to retrieve results for a question."""
-        return await self.vrag_client(question)
-
-    async def vrag_client(self, question: Question) -> RetrievalResult:
-        """Query VisionRAG and return retrieval result."""
-        logger.debug(f"retrieve() called for question {question.qid}: {question.text[:60]}...")
+        """Query VisionRAG and return a structured RetrievalResult."""
+        logger.debug("retrieve() called for question %s: %s…", question.qid, question.text[:60])
         try:
-            logger.debug(f"  Querying VisionRAG API (user_id={self.user_id}, thread_id={self.user_id}_{question.qid})")
+            logger.debug(
+                "Querying VisionRAG API (user_id=%s, thread_id=%s_%s)",
+                self.user_id, self.user_id, question.qid,
+            )
             response = await self.client.query(
                 user_id=self.user_id,
                 question=question.text,
                 thread_id=f"{self.user_id}_{question.qid}",
             )
-            logger.debug(f"  ✓ VisionRAG API response received")
+            logger.debug("✓ VisionRAG API response received")
 
             retrieved_docs = response.get("retrieved_docs", [])
-            logger.debug(f"  Retrieved {len(retrieved_docs)} documents")
-            
-            logger.info(f"Retrieved docs: {retrieved_docs}")
-            
+            logger.debug("Retrieved %d documents", len(retrieved_docs))
+            logger.info("Retrieved docs: %s", retrieved_docs)
+
             retrieved_chunk_ids = ChunkMetadataExtractor.extract_chunk_ids(
                 retrieved_docs,
                 chunk_format=self.chunk_format,
             )
-            logger.debug(f"  Extracted {len([c for c in retrieved_chunk_ids if c])} chunk IDs")
 
             answer_text = response.get("answer", "")
-            logger.debug(f"  Generated answer length: {len(answer_text)} chars")
 
             result = RetrievalResult(
                 qid=question.qid,
@@ -68,11 +63,11 @@ class VisionRAGRetriever(IRetriever):
                 retrieved_docs=retrieved_docs,
                 generated_answer=answer_text,
             )
-            logger.debug(f"✓ RetrievalResult created for {question.qid}")
+            logger.debug("✓ RetrievalResult created for %s", question.qid)
             return result
 
         except Exception as e:
-            logger.error(f"✗ Error retrieving for question {question.qid}: {e}", exc_info=True)
+            logger.error("✗ Error retrieving for question %s: %s", question.qid, e, exc_info=True)
             return RetrievalResult(
                 qid=question.qid,
                 question=question.text,

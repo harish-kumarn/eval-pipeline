@@ -1,33 +1,29 @@
-import json
-from typing import List, Dict
+"""Metric analyzer I/O utilities."""
 
-from pathlib import Path
 import json
+from pathlib import Path
 
 
 def load_metrics(path: str):
+    """Load per-query metrics from a JSON file.
+
+    Returns an empty list if *path* is None or the file does not exist.
+    Unwraps the ``per_query_metrics`` key when the file contains a summary dict.
+    """
     if path is None:
         return []
-    path = Path(path)
 
-    if not path.is_absolute():
-        base = Path(__file__).resolve().parent.parent
-        path = base / path
+    resolved = Path(path)
+    if not resolved.is_absolute():
+        resolved = Path(__file__).resolve().parent.parent / resolved
 
-    if not path.exists():
+    if not resolved.exists():
         return []
 
-    with open(path) as f:
+    with open(resolved) as f:
         data = json.load(f)
 
-    # If wrapped, return per-query metrics
     if isinstance(data, dict) and "per_query_metrics" in data:
         return data["per_query_metrics"]
-        
+
     return data if isinstance(data, list) else data.get("metrics", [])
-
-
-
-def export_json(data: Dict, path: str):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)

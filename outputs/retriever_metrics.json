@@ -1,31 +1,107 @@
 {
-  "mrr@k": 1.0,
-  "recall@k": 1.0,
-  "precision@k": 0.3333333333333333,
-  "ndcg@k": 1.0,
-  "mean_rank": 1.0,
+  "mrr@k": 0.4166666666666667,
+  "recall@k": 0.6666666666666666,
+  "precision@k": 0.2222222222222222,
+  "ndcg@k": 0.4821315434523954,
+  "mean_rank": 1.75,
   "k": 3,
-  "total_queries": 2,
+  "total_queries": 6,
   "per_query_metrics": [
     {
-      "qid": "q1_chunk1",
-      "query": "What is the maximum permissible tilt angle for a boom sprayer when installed on a tractor?",
+      "qid": "q1_chunk7",
+      "query": "What chemicals are known to the State of California to be present in the engine exhaust of this product?",
       "tag": "direct",
-      "rank": 1,
-      "ndcg": 1.0,
-      "mrr": 1.0,
+      "rank": 2,
+      "ground_truth_chunk_id": "chunk7",
+      "retrieved_chunk_ids": [
+        "chunk4",
+        "chunk7",
+        "chunk5"
+      ],
       "recall": 1,
-      "precision": 0.3333333333333333
+      "mrr": 0.5,
+      "precision": 0.3333333333333333,
+      "ndcg": 0.6309297535714575
     },
     {
-      "qid": "q2_chunk1",
-      "query": "What potential hazard arises if non-operators are present in the pest control work area?",
+      "qid": "q2_chunk7",
+      "query": "What is the certified emission durability in hours for this engine?",
+      "tag": "direct",
+      "rank": 2,
+      "ground_truth_chunk_id": "chunk7",
+      "retrieved_chunk_ids": [
+        "chunk5",
+        "chunk7",
+        "chunk38"
+      ],
+      "recall": 1,
+      "mrr": 0.5,
+      "precision": 0.3333333333333333,
+      "ndcg": 0.6309297535714575
+    },
+    {
+      "qid": "q3_chunk7",
+      "query": "Which government agency and company are responsible for explaining the emission control system warranty on small off-road engines?",
+      "tag": "direct",
+      "rank": 2,
+      "ground_truth_chunk_id": "chunk7",
+      "retrieved_chunk_ids": [
+        "chunk5",
+        "chunk7",
+        "chunk38"
+      ],
+      "recall": 1,
+      "mrr": 0.5,
+      "precision": 0.3333333333333333,
+      "ndcg": 0.6309297535714575
+    },
+    {
+      "qid": "q4_chunk7",
+      "query": "What actions can void the emission control system warranty provided by Maruyama Manufacturing Company, Inc.?",
+      "tag": "indirect",
+      "rank": null,
+      "ground_truth_chunk_id": "chunk7",
+      "retrieved_chunk_ids": [
+        "chunk5",
+        "chunk38",
+        "chunk36"
+      ],
+      "recall": 0,
+      "mrr": 0,
+      "precision": 0.0,
+      "ndcg": 0
+    },
+    {
+      "qid": "q5_chunk7",
+      "query": "Under what condition will Maruyama Manufacturing Company, Inc. cover diagnosis, parts, and labor costs for a small off-road engine repair?",
+      "tag": "indirect",
+      "rank": null,
+      "ground_truth_chunk_id": "chunk7",
+      "retrieved_chunk_ids": [
+        "chunk2",
+        "chunk5",
+        "chunk3"
+      ],
+      "recall": 0,
+      "mrr": 0,
+      "precision": 0.0,
+      "ndcg": 0
+    },
+    {
+      "qid": "q6_chunk7",
+      "query": "What is the primary implication of an engine being certified to be emissions compliant for 300 hours with an Air Index of 3?",
       "tag": "indirect",
       "rank": 1,
-      "ndcg": 1.0,
-      "mrr": 1.0,
+      "ground_truth_chunk_id": "chunk7",
+      "retrieved_chunk_ids": [
+        "chunk7",
+        "chunk5",
+        "chunk4"
+      ],
       "recall": 1,
-      "precision": 0.3333333333333333
+      "mrr": 1.0,
+      "precision": 0.3333333333333333,
+      "ndcg": 1.0
     }
   ]
 }

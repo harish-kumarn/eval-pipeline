@@ -89,8 +89,6 @@ class RetrievalMetrics:
 class GenerationMetrics:
     """Aggregated generation metrics using RAGAS framework."""
     faithfulness: Optional[float] = None
-    answer_relevancy: Optional[float] = None
-    context_recall: Optional[float] = None
     context_precision: Optional[float] = None
     answer_correctness: Optional[float] = None
     per_query_metrics: List[Dict[str, Any]] = field(default_factory=list)
@@ -98,21 +96,7 @@ class GenerationMetrics:
     def to_dict(self) -> Dict[str, Any]:
         return {k: v for k, v in {
             "faithfulness": self.faithfulness,
-            "answer_relevancy": self.answer_relevancy,
-            "context_recall": self.context_recall,
             "context_precision": self.context_precision,
             "answer_correctness": self.answer_correctness,
             "per_query_metrics": self.per_query_metrics,
         }.items() if v is not None}
-
-
-@dataclass
-class PipelineConfig:
-    """Configuration for the evaluation pipeline."""
-    target_chunks_file: str
-    output_dir: str
-    user_id: str = "1234"
-    k: int = 3
-    chunk_format: str = "chunk{id}"
-    retriever_timeout: int = 600
-    metrics_config_path: Optional[str] = None

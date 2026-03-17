@@ -2,7 +2,9 @@
 *.pyc
 .env
 .venv
-
+outputs/
+visionragresult.json
+test.ipynb
 # metrics outputs (do not commit)
 #generator_metrics.json
 #retriever_metrics.json

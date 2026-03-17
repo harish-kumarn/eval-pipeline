@@ -1,84 +1,22 @@
 {
   "total": {
-    "prompt_tokens": 14970,
-    "completion_tokens": 2686,
-    "embedding_tokens": 260,
-    "total_tokens": 17916
+    "prompt_tokens": 24057,
+    "completion_tokens": 9728,
+    "embedding_tokens": 552,
+    "total_tokens": 34337
   },
   "per_question": {
-    "q1_chunk1": {
-      "prompt_tokens": 7295,
-      "completion_tokens": 901,
-      "embedding_tokens": 115,
-      "total_tokens": 8311,
+    "_unknown_": {
+      "prompt_tokens": 24057,
+      "completion_tokens": 9728,
+      "embedding_tokens": 552,
+      "total_tokens": 34337,
       "per_metric": {
-        "answer_correctness": {
-          "prompt_tokens": 2097,
-          "completion_tokens": 328,
-          "embedding_tokens": 51,
-          "total_tokens": 2476
-        },
-        "answer_relevancy": {
-          "prompt_tokens": 1194,
-          "completion_tokens": 120,
-          "embedding_tokens": 64,
-          "total_tokens": 1378
-        },
-        "context_precision": {
-          "prompt_tokens": 1251,
-          "completion_tokens": 77,
-          "embedding_tokens": 0,
-          "total_tokens": 1328
-        },
-        "context_recall": {
-          "prompt_tokens": 1196,
-          "completion_tokens": 107,
-          "embedding_tokens": 0,
-          "total_tokens": 1303
-        },
-        "faithfulness": {
-          "prompt_tokens": 1557,
-          "completion_tokens": 269,
-          "embedding_tokens": 0,
-          "total_tokens": 1826
-        }
-      }
-    },
-    "q2_chunk1": {
-      "prompt_tokens": 7675,
-      "completion_tokens": 1785,
-      "embedding_tokens": 145,
-      "total_tokens": 9605,
-      "per_metric": {
-        "answer_correctness": {
-          "prompt_tokens": 2216,
-          "completion_tokens": 721,
-          "embedding_tokens": 86,
-          "total_tokens": 3023
-        },
-        "answer_relevancy": {
-          "prompt_tokens": 1314,
-          "completion_tokens": 123,
-          "embedding_tokens": 59,
-          "total_tokens": 1496
-        },
-        "context_precision": {
-          "prompt_tokens": 1251,
-          "completion_tokens": 69,
-          "embedding_tokens": 0,
-          "total_tokens": 1320
-        },
-        "context_recall": {
-          "prompt_tokens": 1196,
-          "completion_tokens": 107,
-          "embedding_tokens": 0,
-          "total_tokens": 1303
-        },
-        "faithfulness": {
-          "prompt_tokens": 1698,
-          "completion_tokens": 765,
-          "embedding_tokens": 0,
-          "total_tokens": 2463
+        "_unknown_": {
+          "prompt_tokens": 24057,
+          "completion_tokens": 9728,
+          "embedding_tokens": 552,
+          "total_tokens": 34337
         }
       }
     }

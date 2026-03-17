@@ -1,29 +1,39 @@
 {
-  "faithfulness": 0.9166666666666667,
-  "answer_relevancy": 0.9949196763211237,
-  "context_recall": 1.0,
+  "faithfulness": 0.5133540372670807,
   "context_precision": 0.9999999999,
-  "answer_correctness": 0.7101207479334268,
+  "answer_correctness": 0.5896747713754957,
   "per_query_metrics": [
     {
-      "qid": "q1_chunk1",
-      "query": "What is the maximum permissible tilt angle for a boom sprayer when installed on a tractor?",
+      "qid": "q1_chunk7",
+      "query": "What chemicals are known to the State of California to be present in the engine exhaust of this product?",
       "tag": "direct",
-      "faithfulness": 1.0,
-      "answer_relevancy": 0.9927001754303159,
+      "faithfulness": 0.7142857142857143,
       "context_precision": 0.9999999999,
-      "context_recall": 1.0,
-      "answer_correctness": 0.736903957846391
+      "answer_correctness": 0.5295712193079751
     },
     {
-      "qid": "q2_chunk1",
-      "query": "What potential hazard arises if non-operators are present in the pest control work area?",
-      "tag": "indirect",
-      "faithfulness": 0.8333333333333334,
-      "answer_relevancy": 0.9971391772119316,
+      "qid": "q2_chunk7",
+      "query": "What is the certified emission durability in hours for this engine?",
+      "tag": "direct",
+      "faithfulness": 0.6,
       "context_precision": 0.9999999999,
-      "context_recall": 1.0,
-      "answer_correctness": 0.6833375380204627
+      "answer_correctness": 0.33845721854017957
+    },
+    {
+      "qid": "q3_chunk7",
+      "query": "Which government agency and company are responsible for explaining the emission control system warranty on small off-road engines?",
+      "tag": "direct",
+      "faithfulness": 0.0,
+      "context_precision": 0.9999999999,
+      "answer_correctness": 0.9950278574910989
+    },
+    {
+      "qid": "q6_chunk7",
+      "query": "What is the primary implication of an engine being certified to be emissions compliant for 300 hours with an Air Index of 3?",
+      "tag": "indirect",
+      "faithfulness": 0.7391304347826086,
+      "context_precision": 0.9999999999,
+      "answer_correctness": 0.4956427901627295
     }
   ]
 }

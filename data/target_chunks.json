@@ -1,45 +1,72 @@
 {
-    "chunk1": {
-        "text": "1\n\nFor Safe Work\n\n## (1) Overview\n\nCarefully read the “Operation Manual” and instruction manual of the agrichemical used, to carry out work correctly and safely.\n\n[1] When using the boom sprayer installed on the tractor, make sure it is not tilted more than 5°.\n\n[2] The person performing spraying should wear protective gears for agrichemical spraying (such as a pest control mask, protective glasses, boots, rubber gloves and waterproof protective cloth, etc.) to prevent the reagent from coming in direct contact with the body.\n\n[3] Inspect/service and repair the boom sprayer on flat ground. To inspect/service the boom sprayer while still installed on the tractor, stop the engine on flat ground, apply the parking brake, remove the key, and extend the boom sprayer stand. Failure to do so may cause the tractor to move unexpectedly, resulting in an accident.\n\n[5] Keep non-operators away from the area where pest control work is performed. Failure to do so may lead to an accident.\n\n[6] Exercise due caution not to pollute water supply systems, rivers, lakes, ponds, etc.\n\n[7] Never refuel near a fire source as it may cause fire. Refueling while smoking is strictly prohibited.",
-        "images": [
-            "pdf_images/page_1_img_1.png"
-        ],
-        "chunk_description": "General safety guidelines and essential precautions for boom sprayer operation, including PPE requirements, inspection procedures, and refueling safety.",
-        "overlapping": false,
-        "overlapping_reason": "",
-        "semantic_completeness_score": 9.5,
-        "questions": {
-            "direct": [
-                {
-                    "question": "What is the maximum permissible tilt angle for a boom sprayer when installed on a tractor?",
-                    "answer_extract": "When using the boom sprayer installed on the tractor, make sure it is not tilted more than 5°.",
-                    "confidence": 0.98
-                }
-            ],
-            "indirect": [
-                {
-                    "question": "What potential hazard arises if non-operators are present in the pest control work area?",
-                    "answer_synthesis": "Failure to keep non-operators away from the area where pest control work is performed may lead to an accident.",
-                    "confidence": 0.88
-                }
-            ]
+  "chunk7": {
+    "text": "# WARNING:\n\nThe engine exhaust from this product contains chemicals known to the State of California to cause cancer, birth defects or other reproductive harm.\n\nTHE AIR INDEX OF THIS ENGINE IS 3\n0 2 4 6 8 10\nMOST CLEAN LEAST CLEAN\nNOTE: THE LOWER THE AIR INDEX, THE LESS POLLUTION\nTHIS ENGINE IS CERTIFIED TO BE EMISSIONS\nCOMPLIANT FOR THE USE: EXTENDED: 300HOURS\nCHECK THE OWNER'S MANUAL FOR FURTHER DETAILS\n\nCER230HT\n\n# FEDERAL EMISSION CONTROL WARRANTY STATEMENT YOUR WARRANTY RIGHTS AND OBLIGATIONS\n\nThe U.S. Environmental Protection Agency (EPA) and Maruyama Manufacturing Company, Inc. are pleased to explain the emission control system warranty on your small off-road engine. New 1997 and later model year small off-road engines must be designed, built and equipped, at the time of sale, to meet the U.S. EPA regulations for small off-road engines. The equipment engine must be free from defects in materials and workmanship which cause it to fail to conform with U.S. EPA standards for the first two years of engine use from the date of sale to the ultimate purchaser. Maruyama Manufacturing Company, Inc. must warrant the emission control system on your small off-road engine for the period of time listed above provided there has been no abuse, neglect or improper maintenance of your small off-road engine.\n\n## Emission durability of 300 hours.\n\nYour emission control system may include parts such as the carburetor or fuel injection system, the ignition system, and catalytic converter. Also included may be hoses, belts, and connectors and other emission related assemblies.\n\nWhere a warrantable condition exists, Maruyama Manufacturing Company, Inc. will repair your small off-road engine at no cost to you, including diagnosis (if the diagnostic work is performed at an authorized dealer), parts, and labor.\n\n## MANUFACTURER'S WARRANTY COVERAGE:\n\nThe 1997 and later model year small off-road engines are warranted for two years. If any emission-related part on your engine is defective, the part will be repaired or replaced by Maruyama Manufacturing Company, Inc. free of charge.",
+    "images": [
+      "pdf_images/page_4_img_1.png"
+    ],
+    "chunk_description": "This chunk details a California Proposition 65 warning, the engine's Air Index (3) and associated emissions compliance, the CER230HT model, and the Federal Emission Control Warranty Statement from Maruyama, covering EPA regulations, warranty duration, emission durability, included parts, and repair conditions.",
+    "overlapping": false,
+    "overlapping_reason": "",
+    "semantic_completeness_score": 9.5,
+    "questions": {
+      "direct": [
+        {
+          "question": "What chemicals are known to the State of California to be present in the engine exhaust of this product?",
+          "answer_extract": "The engine exhaust from this product contains chemicals known to the State of California to cause cancer, birth defects or other reproductive harm.",
+          "confidence": 1.0
         },
-        "index_concept_vocabulary": "boom sprayer safety, agrichemical handling, protective equipment, tractor installation precautions, weight balance, universal joint, startup inspection, environmental pollution, refueling safety",
-        "layout_complexity": "moderate",
-        "layout_complexity_score": 5,
-        "layout_elements": [
-            "text_blocks",
-            "lists",
-            "diagrams",
-            "warnings"
-        ],
-        "ocr_corrections": [],
-        "content_continuation": {
-            "from_previous_page": false,
-            "to_next_page": false,
-            "continuation_points": []
+        {
+          "question": "What is the certified emission durability in hours for this engine?",
+          "answer_extract": "Emission durability of 300 hours.",
+          "confidence": 0.98
         },
-        "chunk_quality_score": 9.0,
-        "page_no": 1
-    }
+        {
+          "question": "Which government agency and company are responsible for explaining the emission control system warranty on small off-road engines?",
+          "answer_extract": "The U.S. Environmental Protection Agency (EPA) and Maruyama Manufacturing Company, Inc. are pleased to explain the emission control system warranty on your small off-road engine.",
+          "confidence": 0.98
+        }
+      ],
+      "indirect": [
+        {
+          "question": "What actions can void the emission control system warranty provided by Maruyama Manufacturing Company, Inc.?",
+          "answer_extract": "Maruyama Manufacturing Company, Inc. must warrant the emission control system on your small off-road engine for the period of time listed above provided there has been no abuse, neglect or improper maintenance of your small off-road engine.",
+          "confidence": 0.88
+        },
+        {
+          "question": "Under what condition will Maruyama Manufacturing Company, Inc. cover diagnosis, parts, and labor costs for a small off-road engine repair?",
+          "answer_extract": "Where a warrantable condition exists, Maruyama Manufacturing Company, Inc. will repair your small off-road engine at no cost to you, including diagnosis (if the diagnostic work is performed at an authorized dealer), parts, and labor.",
+          "confidence": 0.9
+        },
+        {
+          "question": "What is the primary implication of an engine being certified to be emissions compliant for 300 hours with an Air Index of 3?",
+          "answer_extract": "THE AIR INDEX OF THIS ENGINE IS 3... NOTE: THE LOWER THE AIR INDEX, THE LESS POLLUTION THIS ENGINE IS CERTIFIED TO BE EMISSIONS COMPLIANT FOR THE USE: EXTENDED: 300HOURS",
+          "confidence": 0.87
+        }
+      ]
+    },
+    "index_concept_vocabulary": "California Proposition 65, engine emissions, federal warranty, emission control system, small off-road engine, Maruyama warranty, EPA regulations, air index, CER230HT, emission durability",
+    "layout_complexity": "moderate",
+    "layout_complexity_score": 5,
+    "layout_elements": [
+      "text_blocks",
+      "headings",
+      "warnings",
+      "labels",
+      "paragraphs"
+    ],
+    "ocr_corrections": [
+      {
+        "original": "[missing AIR INDEX block and CER230HT]",
+        "corrected": "THE AIR INDEX OF THIS ENGINE IS 3\n0 2 4 6 8 10\nMOST CLEAN LEAST CLEAN\nNOTE: THE LOWER THE AIR INDEX, THE LESS POLLUTION\nTHIS ENGINE IS CERTIFIED TO BE EMISSIONS\nCOMPLIANT FOR THE USE: EXTENDED: 300HOURS\nCHECK THE OWNER'S MANUAL FOR FURTHER DETAILS\n\nCER230HT",
+        "confidence": 1.0
+      }
+    ],
+    "content_continuation": {
+      "from_previous_page": false,
+      "to_next_page": false,
+      "continuation_points": []
+    },
+    "chunk_quality_score": 9.2,
+    "page_no": 4
+  }
 }

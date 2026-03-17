@@ -41,7 +41,7 @@ class QuestionExtractor:
                     raw_question_text = question_obj.get("question", "").strip()
                     question = Question(
                         qid=qid,
-                        text= raw_question_text,
+                        text=raw_question_text,
                         chunk_id=chunk_id,
                         question_type=qtype_str,
                         metadata=question_obj,
@@ -72,9 +72,29 @@ class QuestionExtractor:
                 return str(val)
         return None
 
+    def get_answer_extract(self, qid: str) -> Optional[str]:
+        """Return the answer_extract field specifically (for answer_correctness ground truth).
+
+        Falls back to get_ground_truth() if answer_extract is not present so the
+        method always returns something when a ground truth exists.
+        """
+        question = self.get_question(qid)
+        if not question:
+            return None
+        ae = question.metadata.get("answer_extract")
+        if ae:
+            if isinstance(ae, list):
+                return " ".join(str(v) for v in ae)
+            return str(ae)
+        # Fall back to the generic ground truth lookup
+        return self.get_ground_truth(qid)
+
     def get_chunk_text(self, chunk_id: str) -> Optional[str]:
         """Get chunk text by chunk ID."""
         chunk = self.target_chunks.get(chunk_id)
         if chunk:
             return chunk.get("text", "")
         return None
+
+
+

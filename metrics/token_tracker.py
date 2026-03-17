@@ -1,7 +1,7 @@
 """Token usage tracker for the evaluation pipeline.
 
-Tracks LLM and embedding token consumption per question and per metric,
-then produces a structured summary.
+Tracks LLM and embedding token consumption per question and per metric, then produces a structured summary.
+
 """
 
 from __future__ import annotations
