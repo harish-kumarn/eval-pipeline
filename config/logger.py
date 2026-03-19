@@ -4,57 +4,52 @@ import logging
 import sys
 import os
 import datetime
-from logging.handlers import RotatingFileHandler
 
 
+def setup_logger(name="eval_pipeline", level=logging.INFO, tag=None):
+    """
+    Configure and return a tagged LoggerAdapter for *name*.
 
-def setup_logger(name="vrag_agent", level=logging.INFO, tag=None):
-    print("Setting up logger...")
-    # Dynamic BASE_DIR
+    The first call for a given *name* attaches two handlers:
+      • StreamHandler  – writes to stdout
+      • FileHandler    – writes to <project_root>/logs/<name>_YYYY-MM-DD_HH-MM-SS.log
+                         (one file per pipeline run, no rotation needed)
+
+    Subsequent calls for the same *name* reuse the existing handlers and just
+    return a new adapter with the requested *tag*.
+    """
+    # Resolve the project root: config/logger.py → config/ → project_root/
     current_file = os.path.abspath(__file__)
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
-    log_dir = os.path.join(BASE_DIR, "logs")
-    print(f"Base directory: {BASE_DIR}")
-    print(f"Log directory will be: {log_dir}")
-
-    # 🔹 ALWAYS ensure log directory exists
+    project_root = os.path.dirname(os.path.dirname(current_file))
+    log_dir = os.path.join(project_root, "logs")
     os.makedirs(log_dir, exist_ok=True)
-    print(f"Log directory created : {log_dir}")
 
     base_logger = logging.getLogger(name)
 
     if not base_logger.handlers:
-        print("Configuring new logger handlers...")
         base_logger.setLevel(level)
         base_logger.propagate = False
+
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - [%(tag)s] - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
 
         # Console handler
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(level)
-
-        # File handler
-        date = datetime.datetime.now().strftime("%d-%m-%Y")
-        log_filename = os.path.join(log_dir, f"{name}_{date}.log")
-
-        file_handler = RotatingFileHandler(
-            log_filename,
-            maxBytes=5 * 1024 * 1024,  # 5MB
-            backupCount=5,
-            encoding="utf-8"
-        )
-        file_handler.setLevel(level)
-
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - [%(tag)s] - %(levelname)s - %(message)s"
-        )
-
         console_handler.setFormatter(formatter)
+
+        # Per-run file handler (timestamp down to the second)
+        run_ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_filename = os.path.join(log_dir, f"{name}_{run_ts}.log")
+        file_handler = logging.FileHandler(log_filename, encoding="utf-8")
+        file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
 
         base_logger.addHandler(console_handler)
         base_logger.addHandler(file_handler)
 
-    # 🔹 Always return adapter
     return logging.LoggerAdapter(base_logger, {"tag": tag or "GENERAL"})
 
 
@@ -70,7 +65,7 @@ def log_info(logger, message):
 
 def log_warning(logger, message):
     """Log warning with yellow bold formatting"""
-    logger.warning(f"[bold yellow]{message}[/bold yellow]")
+    logger.info(f"[bold yellow]{message}[/bold yellow]")
 
 
 def log_error(logger, message):
@@ -80,7 +75,7 @@ def log_error(logger, message):
 
 def log_debug(logger, message):
     """Log debug with violet bold formatting"""
-    logger.debug(f"[bold magenta]{message}[/bold magenta]")
+    logger.info(f"[bold magenta]{message}[/bold magenta]")
 
 
 def log_success(logger, message):

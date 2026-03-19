@@ -5,6 +5,7 @@
 outputs/
 visionragresult.json
 test.ipynb
+dump/
 # metrics outputs (do not commit)
 #generator_metrics.json
 #retriever_metrics.json
@@ -12,3 +13,5 @@ test.ipynb
 
 # data
 #data/target_chunks.json
+test_api.py
+core/api.py

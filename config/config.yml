@@ -1,6 +1,6 @@
 target_chunks: data/target_chunks.json
-output_dir: ./kalanithi
-user_id: "43"
+output_dir: ./eval_results
+user_id: "1234"
 k: 3
 chunk_format: "chunk{id}"
 timeout: 300
@@ -8,4 +8,4 @@ metrics_config: null
 collection_name: 
 VISIONRAG_URL : "http://127.0.0.1:8000/api/v1/users/{user_id}/chat"
 metrics_config_path: "config/metrics_config.json"
-
+collection_name: pole_saw

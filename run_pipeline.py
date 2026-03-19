@@ -1,34 +1,24 @@
 import asyncio
 import sys
-import logging
 from pathlib import Path
-from rich.logging import RichHandler
 
 import json
 
-# from core.data_models import PipelineConfig
-from pipeline.orchestrator import EvaluationOrchestrator
-from metric_analyzer.analyzer import RAGMetricAnalyzer
-from metric_analyzer.reporting import export_json, export_to_csv
-from utils.exporters import export_metrics_to_csv, export_metrics_to_db
+# from support_evals.data_models import PipelineConfig
+from core.orchestrator import EvaluationOrchestrator
+from components.metric_analyzer.analyzer import RAGMetricAnalyzer
+from components.metric_analyzer.reporting import export_json, export_to_csv
+from utils.metric_exporter import export_metrics_to_csv, export_metrics_to_db
 from config.config_loader import load_config
-# --------------------------------------------------
+from config.logger import setup_logger
+
+
+# --------------------------
 # Logging
-# --------------------------------------------------
+# --------------------------
+logger = setup_logger(name="eval_pipeline", tag="MAIN_APP")
+logger.info("Logger initialized for main app")
 
-# Configure root logger with RichHandler
-logging.basicConfig(
-    level="INFO",
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(rich_tracebacks=True, markup=True)]
-)
-
-# Silence noisy libraries
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-
-logger = logging.getLogger("rich")
 
 
 # --------------------------------------------------
@@ -40,8 +30,6 @@ def main() -> None:
     logger.info("🚀 Starting Evaluation Pipeline")
 
     config = load_config("config/config.yml")
-    print("config read successfuly")
-    print(config["user_id"])
     try:        
         orchestrator = EvaluationOrchestrator(config)
 
@@ -54,9 +42,11 @@ def main() -> None:
         )
 
         # 2. Calculate the metrics
-        retrieval_path = Path(".") / "retriever_metrics.json"
-        generation_path = Path(".") / "generator_metrics.json"
-        
+        output_dir = Path(config["output_dir"])
+        retrieval_path = output_dir / "retriever_metrics.json"
+        generation_path = output_dir / "generator_metrics.json"
+        visionrag_path = output_dir / "visionragresult.json"
+
         results = analyzer.analyze(
             str(retrieval_path) if retrieval_path.exists() else None,
             str(generation_path) if generation_path.exists() else None
@@ -82,11 +72,17 @@ def main() -> None:
             with open(generation_path, encoding="utf-8") as f:
                 generation_pq = json.load(f).get("per_query_metrics", [])
 
-        csv_out = export_metrics_to_csv(retrieval_pq, generation_pq, ".")
+        csv_out = export_metrics_to_csv(
+            retrieval_pq,
+            generation_pq,
+            config["output_dir"],
+            collection_name=config.get("collection_name"),
+            visionrag_path=visionrag_path,
+        )
         logger.info(f"📄 Per-question CSV → {csv_out}")
 
         # 5. Save per-question metrics to SQLite DB (all runs appended)
-        db_out = export_metrics_to_db(retrieval_pq, generation_pq, ".")
+        db_out = export_metrics_to_db(retrieval_pq, generation_pq, output_dir, visionrag_path=visionrag_path)
         logger.info(f"🗄️  Per-question DB  → {db_out}")
 
         logger.info("✅ Pipeline and Analysis completed successfully")

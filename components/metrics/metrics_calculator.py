@@ -6,14 +6,15 @@ implements custom retrieval metrics (MRR, Recall, Precision, NDCG).
 """
 
 import math
-import logging
 from typing import Dict, List, Any, Optional, TypeVar
 
-from core.data_models import RetrievalMetrics, GenerationMetrics
-from core.interfaces import IMetricsCalculator
-from metrics.token_tracker import TokenTracker
+from  utils.support_evals.data_models import RetrievalMetrics, GenerationMetrics
+from utils.support_evals.interfaces import IMetricsCalculator
+from components.metrics.token_tracker import TokenTracker
 
-logger = logging.getLogger(__name__)
+from config.logger import setup_logger
+
+logger = setup_logger(name="eval_pipeline", tag="METRICS CALCULATOR")
 
 T = TypeVar('T')
 
@@ -140,6 +141,8 @@ class RetrievalMetricsCalculator(IMetricsCalculator):
 class GenerationMetricsCalculator(IMetricsCalculator):
     """Calculator for generation metrics using the RAGAS evaluation framework."""
 
+    _RETRIES = 3
+
     def __init__(self):
         from ragas import evaluate, RunConfig
         from ragas.metrics import faithfulness, context_precision
@@ -148,12 +151,58 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         self.evaluate  = evaluate
         self.RunConfig = RunConfig
         self.Dataset   = Dataset
-        
 
         self.metric_map: Dict[str, Any] = {
             "faithfulness":      faithfulness,
             "context_precision": context_precision,
         }
+
+    # ── private helpers ──────────────────────────────────────────────────────
+
+    def _build_dataset(self, samples: List[Dict[str, Any]], gt_field: str):
+        return self.Dataset.from_dict({
+            "question":    [str(d["question"])        for d in samples],
+            "answer":      [str(d["answer"])          for d in samples],
+            "ground_truth":[str(d[gt_field])          for d in samples],
+            "contexts":    [d["contexts"]              for d in samples],
+        })
+
+    def _run_ragas(
+        self,
+        samples: List[Dict[str, Any]],
+        metric_names: List[str],
+        metric_objs: List[Any],
+        gt_field: str,
+        results_by_q: Dict[str, Dict[str, Any]],
+        llm_wrapper,
+        embeddings_wrapper,
+        label: str,
+    ) -> None:
+        """Evaluate *metric_objs* with retries and write scores into *results_by_q*."""
+        dataset = self._build_dataset(samples, gt_field)
+        for attempt in range(self._RETRIES):
+            try:
+                result = self.evaluate(
+                    dataset,
+                    metrics=metric_objs,
+                    llm=llm_wrapper,
+                    embeddings=embeddings_wrapper,
+                    run_config=self.RunConfig(timeout=600),
+                )
+                df = result.to_pandas()
+                for i, d in enumerate(samples):
+                    qid = d.get("qid", "_unknown_")
+                    for m in metric_names:
+                        score = float(df[m].iloc[i]) if m in df.columns else float("nan")
+                        results_by_q[qid][m] = 0.0 if math.isnan(score) else score
+                return
+            except Exception as e:
+                logger.info("%s evaluation failed (attempt %d): %s", label, attempt + 1, e)
+
+        # All retries exhausted
+        for d in samples:
+            for m in metric_names:
+                results_by_q[d.get("qid", "_unknown_")][m] = "timeout error"
 
     # ── public API ───────────────────────────────────────────────────────────
 
@@ -170,28 +219,21 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             raise RuntimeError("RAGAS requires llm_wrapper and embeddings_wrapper")
 
         # ── resolve which metrics to run ─────────────────────────────────────
-        # answer_correctness is handled separately
-        base_metric_names: List[str] = []   # faithfulness, context_precision
-        base_metric_objs:  List[Any] = []
+        run_ac = requested_metrics is None or "answer_correctness" in requested_metrics
+        base_metrics: Dict[str, Any] = {}  # name -> ragas metric obj
 
         if requested_metrics:
             for m in requested_metrics:
                 if m in self.metric_map:
-                    base_metric_objs.append(self.metric_map[m])
-                    base_metric_names.append(m)
-                elif m == "answer_correctness":
-                    pass  # handled in separate call below
-                else:
-                    logger.warning("Generation metric '%s' not recognised. Skipping.", m)
+                    base_metrics[m] = self.metric_map[m]
+                elif m != "answer_correctness":
+                    logger.info("Generation metric '%s' not recognised. Skipping.", m)
         else:
-            base_metric_objs  = list(self.metric_map.values())
-            base_metric_names = list(self.metric_map.keys())
+            base_metrics = dict(self.metric_map)
 
-        run_ac = (requested_metrics is None) or ("answer_correctness" in (requested_metrics or []))
-        all_metric_names = base_metric_names + (["answer_correctness"] if run_ac else [])
-
+        all_metric_names = list(base_metrics) + (["answer_correctness"] if run_ac else [])
         if not all_metric_names:
-            logger.warning("No valid generation metrics to compute.")
+            logger.info("No valid generation metrics to compute.")
             return None
 
         # ── filter valid samples ─────────────────────────────────────────────
@@ -199,121 +241,57 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         for d in data:
             qid      = d.get("qid", "_unknown_")
             contexts = [c for c in d.get("contexts", []) if isinstance(c, str) and c.strip()]
-
-            missing: list[str] = []
-            if not contexts:
-                missing.append("contexts (all empty or missing — chunk IDs not found in target_chunks.json)")
-            if not d.get("question", "").strip():
-                missing.append("question")
-            if not d.get("answer", "").strip():
-                missing.append("answer")
-            if not d.get("ground_truth", "").strip():
-                missing.append("ground_truth")
-
+            missing  = (
+                (["contexts (all empty or missing — chunk IDs not found in target_chunks.json)"] if not contexts else [])
+                + (["question"]     if not d.get("question",     "").strip() else [])
+                + (["answer"]       if not d.get("answer",       "").strip() else [])
+                + (["ground_truth"] if not d.get("ground_truth", "").strip() else [])
+            )
             if missing:
-                logger.warning(
-                    "Skipping qid=%s from RAGAS evaluation — missing: %s",
-                    qid, ", ".join(missing),
-                )
+                logger.info("Skipping qid=%s from RAGAS evaluation — missing: %s", qid, ", ".join(missing))
                 continue
-
             valid.append({**d, "contexts": contexts})
 
         if not valid:
-            logger.warning("No valid samples for RAGAS evaluation.")
+            logger.info("No valid samples for RAGAS evaluation.")
             return None
 
-        # Faithfulness + context_precision (uses ground_truth)
-        results_by_q: Dict[str, Dict[str, float]] = {d.get("qid", "_unknown_"): {} for d in valid}
+        results_by_q: Dict[str, Dict[str, Any]] = {d.get("qid", "_unknown_"): {} for d in valid}
 
-        if base_metric_objs:
-            logger.info("↳ Evaluating base metrics (batched): %s", ", ".join(base_metric_names))
-            ds_base = self.Dataset.from_dict({
-                "question":    [str(d["question"])     for d in valid],
-                "answer":      [str(d["answer"])       for d in valid],
-                "ground_truth":[str(d["ground_truth"]) for d in valid],
-                "contexts":    [d["contexts"]           for d in valid],
-            })
+        # ── base metrics (faithfulness, context_precision) ───────────────────
+        if base_metrics:
+            logger.info("↳ Evaluating base metrics (batched): %s", ", ".join(base_metrics))
+            if tracker is not None:
+                tracker.clear_context()
+            self._run_ragas(
+                valid, list(base_metrics), list(base_metrics.values()),
+                gt_field="ground_truth", results_by_q=results_by_q,
+                llm_wrapper=llm_wrapper, embeddings_wrapper=embeddings_wrapper,
+                label="Base metrics",
+            )
 
-            retries = 3
-            for attempt in range(retries):
-                try:
-                    if tracker is not None:
-                        tracker.clear_context()
-                    result_base = self.evaluate(
-                        ds_base,
-                        metrics=base_metric_objs,
-                        llm=llm_wrapper,
-                        embeddings=embeddings_wrapper,
-                        run_config=self.RunConfig(timeout=600),
-                    )
-                    df_base = result_base.to_pandas()
-                    for i, d in enumerate(valid):
-                        qid = d.get("qid", "_unknown_")
-                        for m_name in base_metric_names:
-                            if m_name in df_base.columns:
-                                score = float(df_base[m_name].iloc[i])
-                                results_by_q[qid][m_name] = 0.0 if math.isnan(score) else score
-                            else:
-                                results_by_q[qid][m_name] = 0.0
-                    break
-                except Exception as e:
-                    logger.warning(f"Base metrics evaluation failed (attempt {attempt+1}): {e}")
-                    if attempt == retries - 1:
-                        for d in valid:
-                            for m_name in base_metric_names:
-                                results_by_q[d.get("qid", "_unknown_")][m_name] = "timeout error"
-
-        # ── Call 2: answer_correctness  (uses answer_extract as ground_truth) ─
+        # ── answer_correctness (uses answer_extract as ground_truth) ─────────
         if run_ac:
             from ragas.metrics import answer_correctness
 
-            # Only samples that have a non-empty answer_extract
             valid_ac = [d for d in valid if d.get("answer_extract", "").strip()]
             skipped  = [d.get("qid") for d in valid if d not in valid_ac]
             if skipped:
-                logger.warning(
-                    "answer_correctness: no answer_extract for qids %s — skipping them.", skipped
-                )
+                logger.info("answer_correctness: no answer_extract for qids %s — skipping them.", skipped)
 
             if valid_ac:
                 logger.info(
                     "↳ Evaluating answer_correctness with answer_extract ground truth (%d samples)",
                     len(valid_ac),
                 )
-                ds_ac = self.Dataset.from_dict({
-                    "question":    [str(d["question"])       for d in valid_ac],
-                    "answer":      [str(d["answer"])         for d in valid_ac],
-                    "ground_truth":[str(d["answer_extract"]) for d in valid_ac],
-                    "contexts":    [d["contexts"]             for d in valid_ac],
-                })
-
-                retries = 3
-                for attempt in range(retries):
-                    try:
-                        result_ac = self.evaluate(
-                            ds_ac,
-                            metrics=[answer_correctness],
-                            llm=llm_wrapper,
-                            embeddings=embeddings_wrapper,
-                            run_config=self.RunConfig(timeout=600),
-                        )
-                        df_ac = result_ac.to_pandas()
-                        for i, d in enumerate(valid_ac):
-                            qid = d.get("qid", "_unknown_")
-                            if "answer_correctness" in df_ac.columns:
-                                score = float(df_ac["answer_correctness"].iloc[i])
-                                results_by_q[qid]["answer_correctness"] = 0.0 if math.isnan(score) else score
-                            else:
-                                results_by_q[qid]["answer_correctness"] = 0.0
-                        break
-                    except Exception as e:
-                        logger.warning(f"answer_correctness evaluation failed (attempt {attempt+1}): {e}")
-                        if attempt == retries - 1:
-                            for d in valid_ac:
-                                results_by_q[d.get("qid", "_unknown_")]["answer_correctness"] = "timeout error"
+                self._run_ragas(
+                    valid_ac, ["answer_correctness"], [answer_correctness],
+                    gt_field="answer_extract", results_by_q=results_by_q,
+                    llm_wrapper=llm_wrapper, embeddings_wrapper=embeddings_wrapper,
+                    label="answer_correctness",
+                )
             else:
-                logger.warning("No samples with answer_extract — answer_correctness skipped.")
+                logger.info("No samples with answer_extract — answer_correctness skipped.")
 
         # ── aggregate ─────────────────────────────────────────────────────────
         agg: Dict[str, List[float]] = {m: [] for m in all_metric_names}
@@ -322,17 +300,12 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         for d in valid:
             qid      = d.get("qid", "_unknown_")
             q_scores = results_by_q.get(qid, {})
-
-            entry: Dict[str, Any] = {
-                "qid":   qid,
-                "query": d.get("question", ""),
-                "tag":   d.get("tag", ""),
-            }
-            for m_name in all_metric_names:
-                score = q_scores.get(m_name, 0.0)
-                entry[m_name] = score
-                agg[m_name].append(score)
-
+            entry    = {"qid": qid, "query": d.get("question", ""), "tag": d.get("tag", "")}
+            for m in all_metric_names:
+                score      = q_scores.get(m, 0.0)
+                entry[m]   = score
+                if isinstance(score, float):
+                    agg[m].append(score)
             per_query.append(entry)
 
         return GenerationMetrics(
@@ -341,10 +314,6 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             answer_correctness=_compute_mean(agg.get("answer_correctness", [])),
             per_query_metrics=per_query,
         )
-
-
-
-
 
 
         

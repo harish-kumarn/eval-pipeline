@@ -1,12 +1,16 @@
 """VisionRAG retriever: queries the VisionRAG API and returns structured results."""
 
-import logging
-
-from core.data_models import Question, RetrievalResult
+import random
+from utils.support_evals.data_models import Question, RetrievalResult
 from .vrag_client import VisionRAGClient
-from .chunk_extractor import ChunkMetadataExtractor
+from utils.data_extractor import ChunkMetadataExtractor
 
-logger = logging.getLogger(__name__)
+from config.config_loader import load_config
+from config.logger import setup_logger
+
+logger = setup_logger(name="eval_pipeline", tag="RETRIEVER")
+
+_cfg = load_config("config/config.yml")
 
 
 class VisionRAGRetriever:
@@ -14,12 +18,12 @@ class VisionRAGRetriever:
 
     def __init__(
         self,
-        user_id: str = "1234",
-        timeout: int = 120,
-        chunk_format: str = "chunk{id}",
-        collection_name: str = "sprayers",
+        user_id: str = _cfg["user_id"],
+        timeout: int = _cfg["timeout"],
+        chunk_format: str = _cfg["chunk_format"],
+        collection_name: str = _cfg["collection_name"],
     ):
-        logger.debug(
+        logger.info(
             "Initializing VisionRAGRetriever (user_id=%s, timeout=%ds, "
             "chunk_format=%s, collection=%s)",
             user_id, timeout, chunk_format, collection_name,
@@ -27,25 +31,27 @@ class VisionRAGRetriever:
         self.user_id      = user_id
         self.chunk_format = chunk_format
         self.client       = VisionRAGClient(timeout=timeout, collection_name=collection_name)
-        logger.debug("✓ VisionRAGRetriever initialized")
+        # Generate a unique thread ID for this run instance
+        self.run_thread_id = f"{random.randint(100000, 999999)}_{self.user_id}_eval"
+        logger.info("✓ VisionRAGRetriever initialized with run_thread_id: %s", self.run_thread_id)
 
     async def retrieve(self, question: Question) -> RetrievalResult:
         """Query VisionRAG and return a structured RetrievalResult."""
-        logger.debug("retrieve() called for question %s: %s…", question.qid, question.text[:60])
+        logger.info("retrieve() called for question %s: %s…", question.qid, question.text[:60])
         try:
-            logger.debug(
-                "Querying VisionRAG API (user_id=%s, thread_id=%s_%s)",
-                self.user_id, self.user_id, question.qid,
+            logger.info(
+                "Querying VisionRAG API (user_id=%s, thread_id=%s)",
+                self.user_id, self.run_thread_id,
             )
             response = await self.client.query(
                 user_id=self.user_id,
                 question=question.text,
-                thread_id=f"{self.user_id}_{question.qid}",
+                thread_id=self.run_thread_id,
             )
-            logger.debug("✓ VisionRAG API response received")
+            logger.info("✓ VisionRAG API response received")
 
             retrieved_docs = response.get("retrieved_docs", [])
-            logger.debug("Retrieved %d documents", len(retrieved_docs))
+            logger.info("Retrieved %d documents", len(retrieved_docs))
             logger.info("Retrieved docs: %s", retrieved_docs)
 
             retrieved_chunk_ids = ChunkMetadataExtractor.extract_chunk_ids(
@@ -63,7 +69,7 @@ class VisionRAGRetriever:
                 retrieved_docs=retrieved_docs,
                 generated_answer=answer_text,
             )
-            logger.debug("✓ RetrievalResult created for %s", question.qid)
+            logger.info("✓ RetrievalResult created for %s", question.qid)
             return result
 
         except Exception as e:
@@ -74,3 +80,7 @@ class VisionRAGRetriever:
                 ground_truth_chunk=question.chunk_id,
                 error=str(e),
             )
+
+
+
+

@@ -9,6 +9,9 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Dict, Optional, Any
 
+from config.logger import setup_logger
+
+logger = setup_logger(name="eval_pipeline", tag="TOKEN CALCULATOR")
 
 class TokenTracker:
     """

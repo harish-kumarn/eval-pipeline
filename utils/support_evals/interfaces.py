@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import List
-from core.data_models import Question, RetrievalResult, GenerationResult
+from utils.support_evals.data_models import Question, RetrievalResult, GenerationResult
 
 
 class IRetriever(ABC):

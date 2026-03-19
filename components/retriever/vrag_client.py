@@ -1,12 +1,14 @@
-import json
-import re
 from typing import List, Dict, Any, Optional
-
 import httpx
 from config.config_loader import load_config
+from config.logger import setup_logger
+from .retriever_utils import _extract_docs_from_stream, _parse_json
 
 config = load_config("config/config.yml")
 VISIONRAG_URL = config["VISIONRAG_URL"]
+
+logger = setup_logger(name="eval_pipeline", tag="VRAG_CLIENT")
+logger.info(VISIONRAG_URL)
 
 
 class VisionRAGClient:
@@ -15,6 +17,10 @@ class VisionRAGClient:
     def __init__(self, timeout: int = 120, collection_name: str = "sprayers"):
         self.timeout = timeout
         self.collection_name = collection_name
+        logger.info(
+            "VisionRAGClient initialized (collection=%s, timeout=%ds)",
+            collection_name, timeout,
+        )
 
     async def query(
         self,
@@ -33,12 +39,18 @@ class VisionRAGClient:
         Returns:
             Dict containing question, retrieved_docs, answer, and raw_stream_preview
         """
+        effective_thread_id = thread_id or f"{user_id}_retrieval_eval"
         payload = {
             "user_id": user_id,
             "message": question,
-            "thread_id": thread_id or f"{user_id}_retrieval_eval",
+            "thread_id": effective_thread_id,
             "collection_names": [self.collection_name]
         }
+
+        logger.info(
+            "POST %s — user_id=%s, thread_id=%s, question=%.80s…",
+            VISIONRAG_URL.format(user_id=user_id), user_id, effective_thread_id, question,
+        )
 
         raw_chunks: List[str] = []
         retrieved_docs: Optional[List[Dict]] = None
@@ -50,27 +62,47 @@ class VisionRAGClient:
                 VISIONRAG_URL.format(user_id=user_id),
                 json=payload
             ) as response:
+                logger.info("VisionRAG response status: HTTP %d", response.status_code)
                 if response.status_code != 200:
                     body = await response.aread()
+                    logger.error(
+                        "VisionRAG returned HTTP %d — body: %s", response.status_code, body[:500]
+                    )
                     raise RuntimeError(
                         f"VisionRAG error {response.status_code}: {body}"
                     )
-
                 async for chunk in response.aiter_text():
                     raw_chunks.append(chunk)
 
                     if chunk.startswith("__RETRIEVED_DOCS__"):
                         raw = chunk[len("__RETRIEVED_DOCS__"):]
-                        retrieved_docs = self._parse_json(raw)
+                        retrieved_docs = _parse_json(raw)
+                        if retrieved_docs is not None:
+                            logger.info(
+                                "Parsed %d retrieved docs from __RETRIEVED_DOCS__ marker",
+                                len(retrieved_docs),
+                            )
+                        else:
+                            logger.info("__RETRIEVED_DOCS__ marker found but JSON parse failed")
                     else:
                         answer += chunk
 
         # Fallback parsing if marker-based extraction failed
         if not retrieved_docs:
-            retrieved_docs = self._extract_docs_from_stream(raw_chunks)
+            logger.info("Marker-based doc extraction failed — attempting fallback stream parse")
+            retrieved_docs = _extract_docs_from_stream(raw_chunks)
+            if retrieved_docs:
+                logger.info("Fallback parse succeeded — %d docs extracted", len(retrieved_docs))
+            else:
+                logger.info("Fallback parse also failed — no retrieved docs found")
 
         if retrieved_docs is None:
             retrieved_docs = []
+
+        logger.info(
+            "Query complete — %d docs, answer length=%d chars, raw chunks=%d",
+            len(retrieved_docs), len(answer.strip()), len(raw_chunks),
+        )
 
         return {
             "question": question,
@@ -79,29 +111,3 @@ class VisionRAGClient:
             "raw_stream_preview": raw_chunks[:5],
         }
 
-    @staticmethod
-    def _parse_json(text: str) -> Optional[List[Dict]]:
-        """Safely parse JSON text."""
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            return None
-
-    @staticmethod
-    def _extract_docs_from_stream(raw_chunks: List[str]) -> Optional[List[Dict]]:
-        """Extract JSON from combined stream as fallback."""
-        combined = "".join(raw_chunks)
-
-        if "__RETRIEVED_DOCS__" in combined:
-            raw = combined.split("__RETRIEVED_DOCS__", 1)[1]
-            parsed = VisionRAGClient._parse_json(raw)
-            if parsed:
-                return parsed
-
-        match = re.search(r"(\[\s*\{.*?\}\s*\])", combined, re.DOTALL)
-        if match:
-            parsed = VisionRAGClient._parse_json(match.group(1))
-            if parsed:
-                return parsed
-
-        return None

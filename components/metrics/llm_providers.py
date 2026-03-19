@@ -6,7 +6,6 @@ that are also safe to pass to RAGAS (which expects LangChain interfaces).
 Token usage is tracked via an optional :class:`~metrics.token_tracker.TokenTracker`.
 """
 
-import logging
 import os
 from typing import Any, List, Optional
 
@@ -15,10 +14,11 @@ from dotenv import load_dotenv
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.llms import LLM
 
-from metrics.token_tracker import TokenTracker
+from components.metrics.token_tracker import TokenTracker
+from config.logger import setup_logger
 
 load_dotenv()
-logger = logging.getLogger(__name__)
+logger = setup_logger(name="eval_pipeline", tag="LLM_PROVIDERS")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -49,19 +49,30 @@ class GeminiLLM(LLM):
         if not api_key:
             raise RuntimeError("GOOGLE_API_KEY not set")
 
+        logger.info("GeminiLLM._call — model=%s, prompt_len=%d chars", self.model_name, len(prompt))
+
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(self.model_name)
         response = model.generate_content(prompt)
 
+        prompt_tokens = completion_tokens = 0
         if self.tracker is not None:
             try:
                 usage = response.usage_metadata
+                prompt_tokens     = usage.prompt_token_count or 0
+                completion_tokens = usage.candidates_token_count or 0
                 self.tracker.record_llm(
-                    prompt_tokens=usage.prompt_token_count or 0,
-                    completion_tokens=usage.candidates_token_count or 0,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
                 )
             except Exception as te:
-                logger.debug("Token tracking failed: %s", te)
+                logger.info("Token tracking failed: %s", te)
+
+        logger.info(
+            "GeminiLLM response — prompt_tokens=%d, completion_tokens=%d, response_len=%d chars",
+            prompt_tokens, completion_tokens,
+            len(response.text or "") if response else 0,
+        )
 
         text = response.text if response and response.text else ""
 
@@ -84,11 +95,15 @@ class GeminiEmbeddings(Embeddings):
         self.model_name = model_name
         self.tracker = tracker
         self._dim: Optional[int] = None
+        logger.info("GeminiEmbeddings initialized (model=%s)", model_name)
 
     def _embed(self, text: str) -> List[float]:
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise RuntimeError("GOOGLE_API_KEY not set")
+
+        estimated_tokens = len(text.split())
+        logger.info("GeminiEmbeddings._embed — model=%s, ~%d tokens", self.model_name, estimated_tokens)
 
         genai.configure(api_key=api_key)
         response = genai.embed_content(
@@ -100,12 +115,13 @@ class GeminiEmbeddings(Embeddings):
 
         if self._dim is None:
             self._dim = len(vec)
+            logger.info("GeminiEmbeddings — embedding dimension: %d", self._dim)
 
         if self.tracker is not None:
             try:
-                self.tracker.record_embedding(len(text.split()))
+                self.tracker.record_embedding(estimated_tokens)
             except Exception as te:
-                logger.debug("Embedding token tracking failed: %s", te)
+                logger.info("Embedding token tracking failed: %s", te)
 
         return vec
 

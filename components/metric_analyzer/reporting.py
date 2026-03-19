@@ -1,7 +1,10 @@
 import pandas as pd
 import json
 from typing import Dict, List
-from metric_analyzer.models import QueryAnalysis, PerformanceCategory
+from components.metric_analyzer.models import QueryAnalysis, PerformanceCategory
+from config.logger import setup_logger
+
+logger = setup_logger(name="eval_pipeline", tag="REPORTING")
 
 def to_dataframe(categories: Dict[PerformanceCategory, List[QueryAnalysis]]) -> pd.DataFrame:
     """
@@ -49,7 +52,7 @@ def export_json(categories: Dict[PerformanceCategory, List[QueryAnalysis]], outp
     with open(output_path, "w") as f:
         json.dump(export_data, f, indent=2)
 
-    print(f"✅ Analysis exported to {output_path}")
+    logger.info("Analysis exported to %s (%d records)", output_path, len(export_data))
 
 def export_to_csv(categories: Dict[PerformanceCategory, List[QueryAnalysis]], output_path: str):
     """
@@ -94,4 +97,4 @@ def export_to_csv(categories: Dict[PerformanceCategory, List[QueryAnalysis]], ou
     df = df[existing_key_cols + other_cols]
     
     df.to_csv(output_path, index=False)
-    print(f"✅ CSV exported to {output_path}")
+    logger.info("CSV exported to %s (%d rows, %d columns)", output_path, len(df), len(df.columns))

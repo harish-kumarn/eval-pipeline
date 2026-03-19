@@ -3,10 +3,13 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, Optional, Iterable
 
-from metric_analyzer.models import PerformanceCategory, QueryAnalysis
-from metric_analyzer.patterns import analyze_rag_flow
-from metric_analyzer.io_utils import load_metrics
-from metric_analyzer.reporting import to_dataframe, export_json, export_to_csv
+from components.metric_analyzer.models import PerformanceCategory, QueryAnalysis
+from components.metric_analyzer.patterns import analyze_rag_flow
+from components.metric_analyzer.io_utils import load_metrics
+from components.metric_analyzer.reporting import to_dataframe, export_json, export_to_csv
+from config.logger import setup_logger
+
+logger = setup_logger(name="eval_pipeline", tag="ANALYZER")
 
 
 class RAGMetricAnalyzer:
@@ -16,6 +19,7 @@ class RAGMetricAnalyzer:
     """
 
     def __init__(self, metrics_config_path: str):
+        logger.info("Loading metrics config from %s", metrics_config_path)
         with open(metrics_config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
 
@@ -36,6 +40,10 @@ class RAGMetricAnalyzer:
             if k not in {"retrieval_threshold", "generation_threshold"}
         }
 
+        logger.info(
+            "Thresholds loaded — retrieval=%.2f, generation=%.2f, per-metric=%s",
+            self.retrieval_threshold, self.generation_threshold, self.metric_thresholds,
+        )
         self.analysis_results = None
 
     # -----------------------------------
@@ -76,9 +84,12 @@ class RAGMetricAnalyzer:
             for g in generation or []
         }
 
+        skipped = 0
         for r in retrieval or []:
             qid = r.get("qid") or r.get("query_id") or r.get("id") or r.get("query", "")
             if not qid or qid not in gen_map:
+                logger.info("Skipping qid=%s — not found in generation results", qid)
+                skipped += 1
                 continue
 
             g = gen_map[qid]
@@ -116,14 +127,30 @@ class RAGMetricAnalyzer:
                 )
             )
 
+        total = sum(len(v) for v in categories.values())
+        if skipped:
+            logger.info("Skipped %d queries not matched between retrieval and generation results", skipped)
+        for cat, queries in categories.items():
+            logger.info("  %-35s : %d queries", cat.value, len(queries))
+        logger.info("Categorization complete — %d queries categorized", total)
+
         return categories
 
     # -----------------------------------
     # Public API
     # -----------------------------------
     def analyze(self, retrieval_path: Optional[str], generation_path: Optional[str]):
+        logger.info(
+            "Analyzing — retrieval_path=%s, generation_path=%s",
+            retrieval_path or "(none)", generation_path or "(none)",
+        )
+
         retrieval = load_metrics(retrieval_path) if retrieval_path else []
         generation = load_metrics(generation_path) if generation_path else []
+        logger.info(
+            "Loaded %d retrieval records, %d generation records",
+            len(retrieval), len(generation),
+        )
 
         categories = self.categorize_queries(retrieval, generation)
 
@@ -132,4 +159,7 @@ class RAGMetricAnalyzer:
             "total_queries": sum(len(v) for v in categories.values()),
         }
 
+        logger.info("Analysis complete — total_queries=%d", self.analysis_results["total_queries"])
         return self.analysis_results
+
+
