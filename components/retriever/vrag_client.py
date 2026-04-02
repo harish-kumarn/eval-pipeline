@@ -34,7 +34,8 @@ class VisionRAGClient:
         user_id: str,
         question: str,
         thread_id: Optional[str] = None,
-        eval_file_name: Optional[str] = None
+        eval_file_name: Optional[str] = None,
+        is_last: bool = False
     ) -> Dict[str, Any]:
         """
         Query VisionRAG and parse retrieved documents.
@@ -43,6 +44,7 @@ class VisionRAGClient:
             user_id: User identifier
             question: Query question
             thread_id: Optional thread identifier
+            is_last: Whether this is the final query in the batch
 
         Returns:
             Dict containing question, retrieved_docs, answer, and raw_stream_preview
@@ -53,6 +55,7 @@ class VisionRAGClient:
             "messages": [question],
             "thread_id": effective_thread_id,
             "eval_file_name": eval_file_name,
+            "is_last": is_last,
             "collection_names": [self.collection_name],
             "query_reformulation": self.query_reformulation,
             "use_reranking": self.use_reranking,

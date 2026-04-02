@@ -90,6 +90,8 @@ def main() -> None:
             generation_pq,
             output_dir,
             visionrag_path=visionrag_path,
+            log_path=log_path,
+            table_name=eval_file_name,
         )
         logger.info("🗄️  Per-question DB  → %s", db_out)
 

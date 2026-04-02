@@ -151,8 +151,9 @@ class EvaluationOrchestrator:
         errors = 0
 
         for i, q in enumerate(questions, 1):
-            logger.info("[%d/%d] Retrieving qid=%s", i, len(questions), q.qid)
-            result = await self.retriever.retrieve(q, eval_file_name=eval_file_name)
+            is_last = (i == len(questions))
+            logger.info("[%d/%d] Retrieving qid=%s (is_last=%s)", i, len(questions), q.qid, is_last)
+            result = await self.retriever.retrieve(q, eval_file_name=eval_file_name, is_last=is_last)
             result.generated_answer = self._strip_base64_images(result.generated_answer)  # TODO : check this
 
             if result.error:

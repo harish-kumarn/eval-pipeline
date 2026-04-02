@@ -44,19 +44,20 @@ class VisionRAGRetriever:
         self.run_thread_id = f"{random.randint(100000, 999999)}_{self.user_id}_eval"
         logger.info("✓ VisionRAGRetriever initialized with run_thread_id: %s", self.run_thread_id)
 
-    async def retrieve(self, question: Question, eval_file_name: Optional[str] = None) -> RetrievalResult:
+    async def retrieve(self, question: Question, eval_file_name: Optional[str] = None, is_last: bool = False) -> RetrievalResult:
         """Query VisionRAG and return a structured RetrievalResult."""
         logger.info("retrieve() called for question %s: %s…", question.qid, question.text[:60])
         try:
             logger.info(
-                "Querying VisionRAG API (user_id=%s, thread_id=%s, eval_file_name=%s)",
-                self.user_id, self.run_thread_id, eval_file_name,
+                "Querying VisionRAG API (user_id=%s, thread_id=%s, eval_file_name=%s, is_last=%s)",
+                self.user_id, self.run_thread_id, eval_file_name, is_last,
             )
             response = await self.client.query(
                 user_id=self.user_id,
                 question=question.text,
                 thread_id=self.run_thread_id,
                 eval_file_name=eval_file_name,
+                is_last=is_last,
             )
             logger.info("✓ VisionRAG API response received")
 
