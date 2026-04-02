@@ -4,7 +4,7 @@ import random
 from utils.support_evals.data_models import Question, RetrievalResult
 from .vrag_client import VisionRAGClient
 from utils.data_extractor import ChunkMetadataExtractor
-
+from typing import Dict, Optional
 from config.config_loader import load_config
 from config.logger import setup_logger
 
@@ -22,6 +22,9 @@ class VisionRAGRetriever:
         timeout: int = _cfg["timeout"],
         chunk_format: str = _cfg["chunk_format"],
         collection_name: str = _cfg["collection_name"],
+        query_reformulation: bool = False,
+        use_reranking: bool = False,
+        use_hybrid: bool = False,
     ):
         logger.info(
             "Initializing VisionRAGRetriever (user_id=%s, timeout=%ds, "
@@ -30,23 +33,30 @@ class VisionRAGRetriever:
         )
         self.user_id      = user_id
         self.chunk_format = chunk_format
-        self.client       = VisionRAGClient(timeout=timeout, collection_name=collection_name)
+        self.client       = VisionRAGClient(
+            timeout=timeout,
+            collection_name=collection_name,
+            query_reformulation=query_reformulation,
+            use_reranking=use_reranking,
+            use_hybrid=use_hybrid,
+        )
         # Generate a unique thread ID for this run instance
         self.run_thread_id = f"{random.randint(100000, 999999)}_{self.user_id}_eval"
         logger.info("✓ VisionRAGRetriever initialized with run_thread_id: %s", self.run_thread_id)
 
-    async def retrieve(self, question: Question) -> RetrievalResult:
+    async def retrieve(self, question: Question, eval_file_name: Optional[str] = None) -> RetrievalResult:
         """Query VisionRAG and return a structured RetrievalResult."""
         logger.info("retrieve() called for question %s: %s…", question.qid, question.text[:60])
         try:
             logger.info(
-                "Querying VisionRAG API (user_id=%s, thread_id=%s)",
-                self.user_id, self.run_thread_id,
+                "Querying VisionRAG API (user_id=%s, thread_id=%s, eval_file_name=%s)",
+                self.user_id, self.run_thread_id, eval_file_name,
             )
             response = await self.client.query(
                 user_id=self.user_id,
                 question=question.text,
                 thread_id=self.run_thread_id,
+                eval_file_name=eval_file_name,
             )
             logger.info("✓ VisionRAG API response received")
 

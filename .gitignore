@@ -15,3 +15,8 @@ dump/
 #data/target_chunks.json
 test_api.py
 core/api.py
+.venv
+logs/
+eval_results/
+pyproject.toml
+data/target_chunks.json

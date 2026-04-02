@@ -1,16 +1,14 @@
 import asyncio
+from datetime import datetime
+import json
 import sys
 from pathlib import Path
 
-import json
-
-# from support_evals.data_models import PipelineConfig
-from core.orchestrator import EvaluationOrchestrator
-from components.metric_analyzer.analyzer import RAGMetricAnalyzer
-from components.metric_analyzer.reporting import export_json, export_to_csv
-from utils.metric_exporter import export_metrics_to_csv, export_metrics_to_db
 from config.config_loader import load_config
 from config.logger import setup_logger
+from core.orchestrator import EvaluationOrchestrator
+from utils.metric_exporter import export_metrics_to_db
+from utils.support_evals.file_handler import FileHandler
 
 
 # --------------------------
@@ -29,64 +27,73 @@ def main() -> None:
 
     logger.info("🚀 Starting Evaluation Pipeline")
 
-    config = load_config("config/config.yml")
-    try:        
+    try:
+        config = load_config("config/config.yml")
+
+        # 1) Setup Run Metadata
+        safe_collection = (config.get("collection_name") or "unknown").replace("/", "_")
+        csv_name_base = config.get("csv_name", "eval_run")
+        ts = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+        eval_file_name = f"{csv_name_base}_{ts}"
+
+        csv_filename = f"eval_{safe_collection}_{csv_name_base}_{ts}.csv"
+        logger.info(f"this is my csv file name {csv_filename}")
+
         orchestrator = EvaluationOrchestrator(config)
-
-        # 1. Run Pipeline (Retrieval + Metrics)
-        asyncio.run(orchestrator.run())
+        asyncio.run(orchestrator.run(eval_file_name=eval_file_name))
         
+        aws_config = config.get("aws", {})
+        s3_bucket = aws_config.get("s3_bucket")
+        
+        if s3_bucket:
+            FileHandler.download_eval_file_from_s3(
+                s3_bucket=s3_bucket,
+                eval_file_name=eval_file_name,
+                local_dir=config.get("output_dir", "eval_results")
+            )
+        else:
+            FileHandler.copy_local_evalFile(
+                backend_logs_dir=config.get("backend_logs_dir", ""),
+                local_dest=eval_file_name
+            )
 
-        analyzer = RAGMetricAnalyzer(
-            metrics_config_path="config/metrics_config.json"
-        )
-
-        # 2. Calculate the metrics
+        # 1.5) Enrich results from backend logs and recompute metrics
         output_dir = Path(config["output_dir"])
+        log_path_csv = output_dir / f"{eval_file_name}.csv"
+        log_path_no_ext = output_dir / eval_file_name
+        log_path = log_path_csv if log_path_csv.exists() else log_path_no_ext
+        
+        orchestrator.populate_visionrag_results(log_path)
+        orchestrator.recompute_metrics()
+
+        # 2) Analyze outputs
         retrieval_path = output_dir / "retriever_metrics.json"
         generation_path = output_dir / "generator_metrics.json"
         visionrag_path = output_dir / "visionragresult.json"
 
-        results = analyzer.analyze(
-            str(retrieval_path) if retrieval_path.exists() else None,
-            str(generation_path) if generation_path.exists() else None
-        )
-        
-        
-        # 3. Export analysis results
-        if results and "categories" in results:
-            analysis_json = Path(".") / "analysis_report.json"
-            analysis_csv  = Path(".") / "analysis_report.csv"
-            export_json(results["categories"], str(analysis_json))
-            export_to_csv(results["categories"], str(analysis_csv))
-
-        # 4. Export per-question metrics to CSV (new timestamped file each run)
-        retrieval_pq  = []
-        generation_pq = []
+        # 4) Export per-question metrics (CSV + DB)
+        retrieval_pq: list[dict] = []
+        generation_pq: list[dict] = []
 
         if retrieval_path.exists():
             with open(retrieval_path, encoding="utf-8") as f:
-                retrieval_pq = json.load(f).get("per_query_metrics", [])
+                retrieval_pq = (json.load(f) or {}).get("per_query_metrics", [])
 
         if generation_path.exists():
             with open(generation_path, encoding="utf-8") as f:
-                generation_pq = json.load(f).get("per_query_metrics", [])
+                generation_pq = (json.load(f) or {}).get("per_query_metrics", [])
 
-        csv_out = export_metrics_to_csv(
+        csv_filename = f"eval_{safe_collection}_{csv_name_base}_{ts}.csv"
+
+        db_out = export_metrics_to_db(
             retrieval_pq,
             generation_pq,
-            config["output_dir"],
-            collection_name=config.get("collection_name"),
+            output_dir,
             visionrag_path=visionrag_path,
         )
-        logger.info(f"📄 Per-question CSV → {csv_out}")
-
-        # 5. Save per-question metrics to SQLite DB (all runs appended)
-        db_out = export_metrics_to_db(retrieval_pq, generation_pq, output_dir, visionrag_path=visionrag_path)
-        logger.info(f"🗄️  Per-question DB  → {db_out}")
+        logger.info("🗄️  Per-question DB  → %s", db_out)
 
         logger.info("✅ Pipeline and Analysis completed successfully")
-
     except Exception:
         logger.exception("❌ Pipeline failed")
         sys.exit(1)
@@ -152,23 +159,3 @@ if __name__ == "__main__":
 
 
 
-
-# --------------------------------------------------
-# CLI
-# --------------------------------------------------
-
-# def parse_args() -> argparse.Namespace:
-#     parser = argparse.ArgumentParser(
-#         description="Run evaluation pipeline (VisionRAG + RAGAS + Analysis)"
-#     )
-
-#     parser.add_argument("--target-chunks", default="data/target_chunks.json")
-#     parser.add_argument("--output-dir", default=".")
-#     parser.add_argument("--user-id", default="43")
-#     parser.add_argument("--k", type=int, default=3)
-#     parser.add_argument("--chunk-format", default="chunk{id}")
-#     parser.add_argument("--timeout", type=int, default=300)
-#     parser.add_argument("--metrics-config", help="Path to metrics configuration JSON file")
-#     parser.add_argument("--collection-name", default="sprayers", help="Name of the collection to use")
-
-#     return parser.parse_args()

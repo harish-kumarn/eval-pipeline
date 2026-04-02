@@ -11,3 +11,4 @@ streamlit
 plotly
 pymongo
 dnspython
+boto3

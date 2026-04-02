@@ -125,6 +125,7 @@ def _merge(
             "recall":    r.get("recall"),
             "precision": r.get("precision"),
             "ndcg":      r.get("ndcg"),
+            "generated_answer": vr.get("generated_answer", ""),
             "faithfulness":       g.get("faithfulness"),
             "context_precision":  g.get("context_precision"),
             "answer_correctness": g.get("answer_correctness"),
@@ -150,11 +151,15 @@ def export_metrics_to_csv(
     output_dir: str | Path,
     collection_name: str,
     visionrag_path: str | Path = "outputs/visionragresult.json",
+    custom_filename: Optional[str] = None,
 ) -> Path:
     """Export per-question metrics to a timestamped CSV (new file per run)."""
     rows = _build_rows(retrieval_per_query, generation_per_query, visionrag_path)
-    ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = Path(output_dir) / f"{_safe_name(collection_name)}_{ts}.csv"
+    if custom_filename:
+        path = Path(output_dir) / custom_filename
+    else:
+        ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = Path(output_dir) / f"{_safe_name(collection_name)}_{ts}.csv"
     return save_to_csv(rows, path, CSV_FIELDNAMES)
 
 

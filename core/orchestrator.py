@@ -8,7 +8,7 @@ Orchestrates the full evaluation pipeline:
 import re
 import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from utils.data_extractor import DataExtractor
 from components.retriever.retriever import VisionRAGRetriever
@@ -16,6 +16,8 @@ from components.metrics.metrics_calculator import RetrievalMetricsCalculator, Ge
 from components.metrics.llm_providers import GeminiLLM, GeminiEmbeddings
 from components.metrics.token_tracker import TokenTracker
 from utils.support_evals.file_handler import FileHandler
+import ast
+import csv
 
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
@@ -40,10 +42,13 @@ class EvaluationOrchestrator:
         )
 
         self.retriever = VisionRAGRetriever(
-            user_id=config["user_id"], 
+            user_id=config["user_id"],
             timeout=config["timeout"],
             chunk_format=config["chunk_format"],
             collection_name=config["collection_name"],
+            query_reformulation=config.get("query_reformulation", False),
+            use_reranking=config.get("use_reranking", False),
+            use_hybrid=config.get("use_hybrid", False),
         )
 
         ### Initializing required components
@@ -55,20 +60,89 @@ class EvaluationOrchestrator:
         self.output_dir = Path(config["output_dir"]) 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.visionrag_file = self.output_dir / "visionragresult.json"
+        self.generated_answers_file = self.output_dir / "generated_answers.json"
+
+        
         logger.info("✓ EvaluationOrchestrator ready")
 
-    async def run(self) -> Dict[str, Any]:
+    async def run(self, eval_file_name: Optional[str] = None) -> Dict[str, Any]:
         """Run retrieval then metrics computation and return aggregated results."""
         logger.info("=" * 60)
         logger.info("Pipeline run started")
         questions = self.data_extractor.extract_questions()
         logger.info("Loaded %d questions for evaluation", len(questions))
-        await self._run_retriever(questions)
+        await self._run_retriever(questions, eval_file_name=eval_file_name)
+        return {}
+
+    def populate_visionrag_results(self, log_path: Path) -> None:
+        """Construct visionragresult.json from golden dataset, generated answers and retrieved chunks."""
+        logger.info("Populating results from golden dataset, answers and log: %s", log_path)
+        
+        # 1. Load generated answers
+        try:
+            with open(self.generated_answers_file, "r", encoding="utf-8") as f:
+                generated_answers_list = json.load(f)
+            # Create a lookup map
+            generated_answers_map = {item["qid"]: item.get("generated_answer", "") for item in generated_answers_list}
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logger.error("Failed to load %s: %s", self.generated_answers_file, e)
+            return
+
+        # 2. Parse the CSV log for retrieved chunks
+        log_data = {}
+        if log_path.exists():
+            try:
+                with open(log_path, "r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        query = row.get("query", "").strip()
+                        chunks_str = row.get("final_retrieved_chunks", "[]")
+                        try:
+                            chunks = ast.literal_eval(chunks_str)
+                            if isinstance(chunks, list):
+                                fmt = self.config.get("chunk_format", "chunk{id}")
+                                log_data[query] = [fmt.format(id=cid) for cid in chunks]
+                        except (ValueError, SyntaxError):
+                            logger.warning("Failed to parse chunks string: %s", chunks_str)
+            except Exception as e:
+                logger.error("Error reading log CSV %s: %s", log_path, e)
+        else:
+            logger.warning("Log file not found %s, retrieved chunks will be empty", log_path)
+
+        # 3. Golden dataset
+        questions = self.data_extractor.extract_questions()
+        
+        # 4. Merge all together
+        all_results = []
+        for q in questions:
+            # Match query by text since log_data might use query text
+            retrieved = log_data.get(q.text.strip(), [])
+            
+            entry = {
+                "qid": q.qid,
+                "question": q.text,
+                "ground_truth_chunk_id": q.chunk_id,
+                "retrieved_chunk_ids": retrieved,
+                "generated_answer": generated_answers_map.get(q.qid, ""),
+                "tag": q.question_type,
+            }
+            all_results.append(entry)
+
+        # 5. Save back
+        if len(all_results) > 0:
+            with open(self.visionrag_file, "w", encoding="utf-8") as f:
+                json.dump(all_results, f, indent=2, ensure_ascii=False)
+            logger.info("Successfully populated %d entries into %s", len(all_results), self.visionrag_file)
+        else:
+            logger.warning("No entries were constructed for visionrag result.")
+
+    def recompute_metrics(self) -> Dict[str, Any]:
+        """Re-run the metrics computation phase using the current visionragresult.json."""
         return self._compute_metrics(self.visionrag_file)
 
     # ── Retrieval Phase ───────────────────────────────────────────────────────
 
-    async def _run_retriever(self, questions) -> None:
+    async def _run_retriever(self, questions, eval_file_name: Optional[str] = None) -> None:
         """Query VisionRAG for every question and persist results to disk."""
         logger.info("-" * 40)
         logger.info("RETRIEVAL PHASE — %d queries", len(questions))
@@ -78,7 +152,7 @@ class EvaluationOrchestrator:
 
         for i, q in enumerate(questions, 1):
             logger.info("[%d/%d] Retrieving qid=%s", i, len(questions), q.qid)
-            result = await self.retriever.retrieve(q)
+            result = await self.retriever.retrieve(q, eval_file_name=eval_file_name)
             result.generated_answer = self._strip_base64_images(result.generated_answer)  # TODO : check this
 
             if result.error:
@@ -95,18 +169,15 @@ class EvaluationOrchestrator:
             all_results.append({
                 "qid":                 result.qid,
                 "question":            result.question,
-                "ground_truth_chunk_id": result.ground_truth_chunk,
-                "retrieved_chunk_ids": result.retrieved_chunks,
                 "generated_answer":    result.generated_answer,
-                "tag":                 q.question_type,
             })
             
-            with open(self.visionrag_file, "w", encoding="utf-8") as f:
+            with open(self.generated_answers_file, "w", encoding="utf-8") as f:
                 json.dump(all_results, f, indent=2, ensure_ascii=False)
 
         logger.info(
             "Retrieval phase complete — %d succeeded, %d errors. Results → %s",
-            len(all_results) - errors, errors, self.visionrag_file,
+            len(all_results) - errors, errors, self.generated_answers_file,
         )
 
     # ── Metrics Phase ─────────────────────────────────────────────────────────

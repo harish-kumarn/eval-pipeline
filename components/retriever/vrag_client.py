@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 import httpx
+import json
 from config.config_loader import load_config
 from config.logger import setup_logger
 from .retriever_utils import _extract_docs_from_stream, _parse_json
@@ -14,19 +15,26 @@ logger.info(VISIONRAG_URL)
 class VisionRAGClient:
     """Handles VisionRAG API interactions and response parsing."""
 
-    def __init__(self, timeout: int = 120, collection_name: str = "sprayers"):
+    def __init__(self, timeout: int = 120, collection_name: str = "sprayers",
+                 query_reformulation: bool = False, use_reranking: bool = False,
+                 use_hybrid: bool = False):
         self.timeout = timeout
         self.collection_name = collection_name
+        self.query_reformulation = query_reformulation
+        self.use_reranking = use_reranking
+        self.use_hybrid = use_hybrid
         logger.info(
-            "VisionRAGClient initialized (collection=%s, timeout=%ds)",
-            collection_name, timeout,
+            "VisionRAGClient initialized (collection=%s, timeout=%ds, "
+            "query_reformulation=%s, use_reranking=%s, use_hybrid=%s)",
+            collection_name, timeout, query_reformulation, use_reranking, use_hybrid,
         )
 
     async def query(
         self,
         user_id: str,
         question: str,
-        thread_id: Optional[str] = None
+        thread_id: Optional[str] = None,
+        eval_file_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Query VisionRAG and parse retrieved documents.
@@ -42,15 +50,20 @@ class VisionRAGClient:
         effective_thread_id = thread_id or f"{user_id}_retrieval_eval"
         payload = {
             "user_id": user_id,
-            "message": question,
+            "messages": [question],
             "thread_id": effective_thread_id,
-            "collection_names": [self.collection_name]
+            "eval_file_name": eval_file_name,
+            "collection_names": [self.collection_name],
+            "query_reformulation": self.query_reformulation,
+            "use_reranking": self.use_reranking,
+            "use_hybrid": self.use_hybrid,
         }
 
         logger.info(
             "POST %s — user_id=%s, thread_id=%s, question=%.80s…",
             VISIONRAG_URL.format(user_id=user_id), user_id, effective_thread_id, question,
         )
+        logger.info("VisionRAG API Payload: %s", json.dumps(payload, indent=2))
 
         raw_chunks: List[str] = []
         retrieved_docs: Optional[List[Dict]] = None
@@ -87,14 +100,14 @@ class VisionRAGClient:
                     else:
                         answer += chunk
 
-        # Fallback parsing if marker-based extraction failed
-        if not retrieved_docs:
-            logger.info("Marker-based doc extraction failed — attempting fallback stream parse")
-            retrieved_docs = _extract_docs_from_stream(raw_chunks)
-            if retrieved_docs:
-                logger.info("Fallback parse succeeded — %d docs extracted", len(retrieved_docs))
-            else:
-                logger.info("Fallback parse also failed — no retrieved docs found")
+        # # Fallback parsing if marker-based extraction failed
+        # if not retrieved_docs:
+        #     logger.info("Marker-based doc extraction failed — attempting fallback stream parse")
+        #     retrieved_docs = _extract_docs_from_stream(raw_chunks)
+        #     if retrieved_docs:
+        #         logger.info("Fallback parse succeeded — %d docs extracted", len(retrieved_docs))
+        #     else:
+        #         logger.info("Fallback parse also failed — no retrieved docs found")
 
         if retrieved_docs is None:
             retrieved_docs = []
