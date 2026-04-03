@@ -5,8 +5,11 @@ from config.config_loader import load_config
 from config.logger import setup_logger
 from .retriever_utils import _extract_docs_from_stream, _parse_json
 
-config = load_config("config/config.yml")
-VISIONRAG_URL = config["VISIONRAG_URL"]
+# --------------------------
+# Load Config
+# --------------------------
+CONFIG = load_config("config/config.yml")
+VISIONRAG_URL = CONFIG["VISIONRAG_URL"]
 
 logger = setup_logger(name="eval_pipeline", tag="VRAG_CLIENT")
 logger.info(VISIONRAG_URL)
@@ -15,18 +18,18 @@ logger.info(VISIONRAG_URL)
 class VisionRAGClient:
     """Handles VisionRAG API interactions and response parsing."""
 
-    def __init__(self, timeout: int = 120, collection_name: str = "sprayers",
+    def __init__(self, collection_name: str = "sprayers",
                  query_reformulation: bool = False, use_reranking: bool = False,
                  use_hybrid: bool = False):
-        self.timeout = timeout
+        self.timeout = CONFIG['vrag_client']['timeout']
         self.collection_name = collection_name
         self.query_reformulation = query_reformulation
-        self.use_reranking = use_reranking
+        self.use_reranking = use_reranking 
         self.use_hybrid = use_hybrid
         logger.info(
             "VisionRAGClient initialized (collection=%s, timeout=%ds, "
             "query_reformulation=%s, use_reranking=%s, use_hybrid=%s)",
-            collection_name, timeout, query_reformulation, use_reranking, use_hybrid,
+            self.collection_name, self.timeout, self.query_reformulation, self.use_reranking, self.use_hybrid,
         )
 
     async def query(

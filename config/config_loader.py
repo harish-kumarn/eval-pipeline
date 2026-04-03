@@ -26,3 +26,5 @@ def load_metrics_config(config_path: str) -> Dict[str, Any]:
     console.log(f"[dim]Loading metrics config from {config_path}[/dim]")
     with open(config_path, "r") as f:
         return json.load(f)
+
+        

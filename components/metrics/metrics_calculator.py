@@ -159,6 +159,7 @@ class GenerationMetricsCalculator(IMetricsCalculator):
 
     # ── private helpers ──────────────────────────────────────────────────────
 
+    #TODO loop thru samples once and build dataset
     def _build_dataset(self, samples: List[Dict[str, Any]], gt_field: str):
         return self.Dataset.from_dict({
             "question":    [str(d["question"])        for d in samples],
@@ -236,11 +237,18 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             logger.info("No valid generation metrics to compute.")
             return None
 
+
+
+
+
+
+
+
         # ── filter valid samples ─────────────────────────────────────────────
         valid = []
         for d in data:
             qid      = d.get("qid", "_unknown_")
-            contexts = [c for c in d.get("contexts", []) if isinstance(c, str) and c.strip()]
+            contexts = [c for c in d.get("contexts", []) if isinstance(c, str) and c.strip()]             ## TODO : check this 
             missing  = (
                 (["contexts (all empty or missing — chunk IDs not found in target_chunks.json)"] if not contexts else [])
                 + (["question"]     if not d.get("question",     "").strip() else [])
@@ -257,6 +265,20 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             return None
 
         results_by_q: Dict[str, Dict[str, Any]] = {d.get("qid", "_unknown_"): {} for d in valid}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         # ── base metrics (faithfulness, context_precision) ───────────────────
         if base_metrics:
@@ -297,6 +319,8 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         agg: Dict[str, List[float]] = {m: [] for m in all_metric_names}
         per_query: List[Dict[str, Any]] = []
 
+
+        #TODO check what this is
         for d in valid:
             qid      = d.get("qid", "_unknown_")
             q_scores = results_by_q.get(qid, {})

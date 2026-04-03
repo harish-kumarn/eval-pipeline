@@ -10,7 +10,7 @@ from config.logger import setup_logger
 
 logger = setup_logger(name="eval_pipeline", tag="RETRIEVER")
 
-_cfg = load_config("config/config.yml")
+CONFIG = load_config("config/config.yml")
 
 
 class VisionRAGRetriever:
@@ -18,13 +18,12 @@ class VisionRAGRetriever:
 
     def __init__(
         self,
-        user_id: str = _cfg["user_id"],
-        timeout: int = _cfg["timeout"],
-        chunk_format: str = _cfg["chunk_format"],
-        collection_name: str = _cfg["collection_name"],
-        query_reformulation: bool = False,
-        use_reranking: bool = False,
-        use_hybrid: bool = False,
+        user_id: str = CONFIG["user_id"],
+        chunk_format: str = CONFIG["chunk_format"],
+        collection_name: str = CONFIG["collection_name"],
+        query_reformulation: bool = CONFIG["query_reformulation"],
+        use_reranking: bool = CONFIG["use_reranking"],
+        use_hybrid: bool = CONFIG["use_hybrid"],
     ):
         logger.info(
             "Initializing VisionRAGRetriever (user_id=%s, timeout=%ds, "
@@ -34,7 +33,6 @@ class VisionRAGRetriever:
         self.user_id      = user_id
         self.chunk_format = chunk_format
         self.client       = VisionRAGClient(
-            timeout=timeout,
             collection_name=collection_name,
             query_reformulation=query_reformulation,
             use_reranking=use_reranking,
@@ -52,6 +50,8 @@ class VisionRAGRetriever:
                 "Querying VisionRAG API (user_id=%s, thread_id=%s, eval_file_name=%s, is_last=%s)",
                 self.user_id, self.run_thread_id, eval_file_name, is_last,
             )
+
+            ### Calling the vrag client
             response = await self.client.query(
                 user_id=self.user_id,
                 question=question.text,

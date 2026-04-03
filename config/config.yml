@@ -1,9 +1,9 @@
 target_chunks: data/target_chunks.json
-output_dir: ./eval_results
+
 user_id: "1234"
 k: 3
 chunk_format: "chunk{id}"
-timeout: 300
+
 metrics_config: null
 collection_name: pole_saw
 VISIONRAG_URL: "http://127.0.0.1:8000/api/v1/evaluation/users/{user_id}/chat"
@@ -23,6 +23,14 @@ use_hybrid: true
 # --- Backend Logging (for fetching retrieval results if API is missing markers) ---
 backend_logs_dir: "/home/krithika/Documents/LongTermMemoryAgent/vrag/eval_results"
 
-aws:
-  s3_bucket: "vision-rag-test-bc"
+aws_s3_bucket: "vision-rag-test-bc"
 
+
+results_dirs:
+  output_dir: ./eval_results
+  vrag_result_json : "visionragresult.json"
+  generated_answers_file : "generated_answers.json"
+
+
+vrag_client:
+  timeout: 300

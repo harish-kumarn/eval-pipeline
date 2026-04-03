@@ -18,6 +18,28 @@ logger = setup_logger(name="eval_pipeline", tag="MAIN_APP")
 logger.info("Logger initialized for main app")
 
 
+# --------------------------
+# Load Config
+# --------------------------
+CONFIG = load_config("config/config.yml")
+
+
+# --------------------------
+# Path configurations
+# --------------------------
+output_dir = Path(CONFIG["results_dirs"]["output_dir"])
+output_dir.mkdir(parents=True, exist_ok=True)
+retrieval_path = output_dir / "retriever_metrics.json"
+generation_path = output_dir / "generator_metrics.json"
+visionrag_path = output_dir / "visionragresult.json"
+
+
+# --------------------------
+# Initialize Orchestrator
+# --------------------------
+orchestrator = EvaluationOrchestrator()
+
+
 
 # --------------------------------------------------
 # Main
@@ -25,51 +47,36 @@ logger.info("Logger initialized for main app")
 
 def main() -> None:
 
-    logger.info("🚀 Starting Evaluation Pipeline")
-
     try:
-        config = load_config("config/config.yml")
+        
 
         # 1) Setup Run Metadata
-        safe_collection = (config.get("collection_name") or "unknown").replace("/", "_")
-        csv_name_base = config.get("csv_name", "eval_run")
+        safe_collection = (CONFIG.get("collection_name") or "unknown").replace("/", "_")
+        csv_name_base = CONFIG.get("csv_name", "eval_run")
         ts = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
         eval_file_name = f"{csv_name_base}_{ts}"
 
         csv_filename = f"eval_{safe_collection}_{csv_name_base}_{ts}.csv"
         logger.info(f"this is my csv file name {csv_filename}")
 
-        orchestrator = EvaluationOrchestrator(config)
+        ### Run the pipeline
         asyncio.run(orchestrator.run(eval_file_name=eval_file_name))
         
-        aws_config = config.get("aws", {})
-        s3_bucket = aws_config.get("s3_bucket")
         
-        if s3_bucket:
+        ### Download the pipeline results from S3
+        if CONFIG['aws_s3_bucket']:
             FileHandler.download_eval_file_from_s3(
-                s3_bucket=s3_bucket,
+                s3_bucket=CONFIG['aws_s3_bucket'],
                 eval_file_name=eval_file_name,
-                local_dir=config.get("output_dir", "eval_results")
-            )
-        else:
-            FileHandler.copy_local_evalFile(
-                backend_logs_dir=config.get("backend_logs_dir", ""),
-                local_dest=eval_file_name
+                local_dir=CONFIG["results_dirs"]["output_dir"]
             )
 
-        # 1.5) Enrich results from backend logs and recompute metrics
-        output_dir = Path(config["output_dir"])
-        log_path_csv = output_dir / f"{eval_file_name}.csv"
-        log_path_no_ext = output_dir / eval_file_name
-        log_path = log_path_csv if log_path_csv.exists() else log_path_no_ext
-        
-        orchestrator.populate_visionrag_results(log_path)
-        orchestrator.recompute_metrics()
 
-        # 2) Analyze outputs
-        retrieval_path = output_dir / "retriever_metrics.json"
-        generation_path = output_dir / "generator_metrics.json"
-        visionrag_path = output_dir / "visionragresult.json"
+        ### Enrich results from backend logs and recompute metrics
+        vrag_client_csv = output_dir / f"{eval_file_name}.csv"
+        orchestrator.populate_visionrag_results(vrag_client_csv)
+        orchestrator._compute_metrics(visionrag_path)
+
 
         # 4) Export per-question metrics (CSV + DB)
         retrieval_pq: list[dict] = []
@@ -90,7 +97,7 @@ def main() -> None:
             generation_pq,
             output_dir,
             visionrag_path=visionrag_path,
-            log_path=log_path,
+            log_path=vrag_client_csv,
             table_name=eval_file_name,
         )
         logger.info("🗄️  Per-question DB  → %s", db_out)
