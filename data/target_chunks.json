@@ -14,16 +14,6 @@
           "question": "What chemicals are known to the State of California to be present in the engine exhaust of this product?",
           "answer_extract": "The engine exhaust from this product contains chemicals known to the State of California to cause cancer, birth defects or other reproductive harm.",
           "confidence": 1.0
-        },
-        {
-          "question": "What is the certified emission durability in hours for this engine?",
-          "answer_extract": "Emission durability of 300 hours.",
-          "confidence": 0.98
-        },
-        {
-          "question": "Which government agency and company are responsible for explaining the emission control system warranty on small off-road engines?",
-          "answer_extract": "The U.S. Environmental Protection Agency (EPA) and Maruyama Manufacturing Company, Inc. are pleased to explain the emission control system warranty on your small off-road engine.",
-          "confidence": 0.98
         }
       ],
       "indirect": [
@@ -36,11 +26,6 @@
           "question": "Under what condition will Maruyama Manufacturing Company, Inc. cover diagnosis, parts, and labor costs for a small off-road engine repair?",
           "answer_extract": "Where a warrantable condition exists, Maruyama Manufacturing Company, Inc. will repair your small off-road engine at no cost to you, including diagnosis (if the diagnostic work is performed at an authorized dealer), parts, and labor.",
           "confidence": 0.9
-        },
-        {
-          "question": "What is the primary implication of an engine being certified to be emissions compliant for 300 hours with an Air Index of 3?",
-          "answer_extract": "THE AIR INDEX OF THIS ENGINE IS 3... NOTE: THE LOWER THE AIR INDEX, THE LESS POLLUTION THIS ENGINE IS CERTIFIED TO BE EMISSIONS COMPLIANT FOR THE USE: EXTENDED: 300HOURS",
-          "confidence": 0.87
         }
       ]
     },

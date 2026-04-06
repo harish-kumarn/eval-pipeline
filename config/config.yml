@@ -1,3 +1,14 @@
+###################################################3
+
+csv_name: qr1_rr1_hy1
+
+query_reformulation: true
+use_reranking: true
+use_hybrid: true
+
+
+#####################################################
+
 target_chunks: data/target_chunks.json
 
 user_id: "1234"
@@ -12,13 +23,6 @@ metrics_config_path: "config/metrics_config.json"
 # --- Questions to evaluate (leave empty to use target_chunks.json) ---
 questions: []
 
-# --- Output CSV file name (without .csv) ---
-csv_name: pole_saw
-
-# --- Pipeline conditions sent to VisionRAG API ---
-query_reformulation: true
-use_reranking: false
-use_hybrid: true
 
 # --- Backend Logging (for fetching retrieval results if API is missing markers) ---
 backend_logs_dir: "/home/krithika/Documents/LongTermMemoryAgent/vrag/eval_results"

@@ -28,7 +28,7 @@ class VisionRAGRetriever:
         logger.info(
             "Initializing VisionRAGRetriever (user_id=%s, timeout=%ds, "
             "chunk_format=%s, collection=%s)",
-            user_id, timeout, chunk_format, collection_name,
+            user_id, CONFIG["vrag_client"]["timeout"], chunk_format, collection_name,
         )
         self.user_id      = user_id
         self.chunk_format = chunk_format

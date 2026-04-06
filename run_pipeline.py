@@ -7,7 +7,7 @@ from pathlib import Path
 from config.config_loader import load_config
 from config.logger import setup_logger
 from core.orchestrator import EvaluationOrchestrator
-from utils.metric_exporter import export_metrics_to_db
+from utils.metric_exporter import export_to_db, export_to_csv
 from utils.support_evals.file_handler import FileHandler
 
 
@@ -25,55 +25,48 @@ CONFIG = load_config("config/config.yml")
 
 
 # --------------------------
-# Path configurations
-# --------------------------
-output_dir = Path(CONFIG["results_dirs"]["output_dir"])
-output_dir.mkdir(parents=True, exist_ok=True)
-retrieval_path = output_dir / "retriever_metrics.json"
-generation_path = output_dir / "generator_metrics.json"
-visionrag_path = output_dir / "visionragresult.json"
-
-
-# --------------------------
-# Initialize Orchestrator
-# --------------------------
-orchestrator = EvaluationOrchestrator()
-
-
-
-# --------------------------------------------------
 # Main
 # --------------------------------------------------
 
 def main() -> None:
 
     try:
-        
-
         # 1) Setup Run Metadata
+        base_output_dir = Path(CONFIG["results_dirs"]["output_dir"])
         safe_collection = (CONFIG.get("collection_name") or "unknown").replace("/", "_")
         csv_name_base = CONFIG.get("csv_name", "eval_run")
         ts = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+        
+        # eval_file_name will be the directory name
         eval_file_name = f"{csv_name_base}_{ts}"
+        run_output_dir = base_output_dir / eval_file_name
+        run_output_dir.mkdir(parents=True, exist_ok=True)
 
-        csv_filename = f"eval_{safe_collection}_{csv_name_base}_{ts}.csv"
-        logger.info(f"this is my csv file name {csv_filename}")
+        # Simplified CSV filename for final export (distinct from backend log)
+        csv_filename = f"results_{eval_file_name}.csv"
+        logger.info(f"Main Run Folder: {eval_file_name}")
+        logger.info(f"Final CSV Export: {csv_filename}")
+
+        # 2) Initialize Orchestrator with the run-specific directory
+        orchestrator = EvaluationOrchestrator(output_dir=run_output_dir)
+        
+        # Internal paths for metrics calculation
+        retrieval_path = run_output_dir / "retriever_metrics.json"
+        generation_path = run_output_dir / "generator_metrics.json"
+        visionrag_path = run_output_dir / "visionragresult.json"
 
         ### Run the pipeline
         asyncio.run(orchestrator.run(eval_file_name=eval_file_name))
-        
-        
-        ### Download the pipeline results from S3
         if CONFIG['aws_s3_bucket']:
             FileHandler.download_eval_file_from_s3(
                 s3_bucket=CONFIG['aws_s3_bucket'],
                 eval_file_name=eval_file_name,
-                local_dir=CONFIG["results_dirs"]["output_dir"]
+                local_dir=run_output_dir
             )
 
 
         ### Enrich results from backend logs and recompute metrics
-        vrag_client_csv = output_dir / f"{eval_file_name}.csv"
+        vrag_client_csv = run_output_dir / f"{eval_file_name}.csv"
         orchestrator.populate_visionrag_results(vrag_client_csv)
         orchestrator._compute_metrics(visionrag_path)
 
@@ -90,15 +83,32 @@ def main() -> None:
             with open(generation_path, encoding="utf-8") as f:
                 generation_pq = (json.load(f) or {}).get("per_query_metrics", [])
 
-        csv_filename = f"eval_{safe_collection}_{csv_name_base}_{ts}.csv"
-
-        db_out = export_metrics_to_db(
+        # csv_filename already generated above
+        csv_out = export_to_csv(
             retrieval_pq,
             generation_pq,
-            output_dir,
+            run_output_dir,
             visionrag_path=visionrag_path,
+            top_k=CONFIG["k"],
+            log_path=vrag_client_csv,
+            csv_filename=csv_filename
+        )
+        final_csv_name = csv_out.name
+        logger.info("📊 Per-question CSV → %s (final_csv_name=%s)", csv_out, final_csv_name)
+
+        db_out = export_to_db(
+            retrieval_pq,
+            generation_pq,
+            run_output_dir,
+            visionrag_path=visionrag_path,
+            top_k=CONFIG["k"],
+            hybrid_search=CONFIG["use_hybrid"],
+            query_reformulation=CONFIG["query_reformulation"],
+            reranking=CONFIG["use_reranking"],
             log_path=vrag_client_csv,
             table_name=eval_file_name,
+            db_filename="../../eval_dashboard/metrics.db", # Since run_output_dir is ./eval_results/<name>
+            final_csv_name=final_csv_name
         )
         logger.info("🗄️  Per-question DB  → %s", db_out)
 

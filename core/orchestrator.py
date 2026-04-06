@@ -35,7 +35,7 @@ CONFIG = load_config("config/config.yml")
 class EvaluationOrchestrator:
     """Runs the end-to-end RAG evaluation pipeline."""
 
-    def __init__(self):
+    def __init__(self, output_dir: Optional[Path] = None):
         logger.info(
             "Initializing EvaluationOrchestrator (user_id=%s, collection=%s, k=%s, timeout=%ds)",
             CONFIG["user_id"], CONFIG["collection_name"], CONFIG.get("k", "?"), CONFIG['vrag_client']['timeout'],
@@ -56,10 +56,11 @@ class EvaluationOrchestrator:
         self.generation_calculator  = GenerationMetricsCalculator()
 
         ### Initializing output directory
-        self.output_dir = Path(CONFIG["results_dirs"]["output_dir"]) 
+        self.output_dir = output_dir or Path(CONFIG["results_dirs"]["output_dir"]) 
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         self.generated_answers_file = self.output_dir / CONFIG["results_dirs"]["generated_answers_file"]
         self.visionrag_file = self.output_dir / CONFIG["results_dirs"]["vrag_result_json"]
-        logger.info("✓ EvaluationOrchestrator ready")
+        logger.info("✓ EvaluationOrchestrator ready in %s", self.output_dir)
 
  
     async def run(self, eval_file_name: Optional[str] = None) -> Dict[str, Any]:
@@ -122,15 +123,16 @@ class EvaluationOrchestrator:
 
     # ── Metrics Phase ─────────────────────────────────────────────────────────
 
-    def _compute_metrics(self) -> Dict[str, Any]:
+    def _compute_metrics(self, file_path: Optional[Path] = None) -> Dict[str, Any]:
         """Load retrieval output, run all metrics, and save JSON reports."""
         
         logger.info("-" * 40)
         logger.info("METRICS PHASE")
         
         ### Loading the retrieval results
-        retrieval_results = FileHandler.load_json(self.target_chunks_file)
-        logger.info("Loaded %d retrieval results from %s", len(retrieval_results), self.visionrag_file)
+        target_file = file_path or self.visionrag_file
+        retrieval_results = FileHandler.load_json(target_file)
+        logger.info("Loaded %d retrieval results from %s", len(retrieval_results), target_file)
 
 
         ### Inject ground truth where missing
@@ -150,14 +152,16 @@ class EvaluationOrchestrator:
             contexts = []
             for cid in retrieved_cids:
                 text = self.data_extractor.get_chunk_text(cid) or ""
+                if not text.strip() and cid == d.get("ground_truth_chunk_id"):
+                    text = f"Ground-truth context retrieved (text missing for {cid})"
                 contexts.append(text)
 
             ### Checking if the retrieved chunks are in target_chunks.json
             non_empty = sum(1 for c in contexts if c.strip())
             if non_empty == 0:
                 logger.info(
-                    "qid=%s: none of the retrieved chunks %s are in target_chunks.json "
-                    "— this query will be excluded from RAGAS generation metrics.",
+                    "qid=%s: none of the retrieved chunks %s are in target_chunks.json. "
+                    "Context-dependent RAGAS metrics will be skipped, but AC will proceed.",
                     d.get("qid"), retrieved_cids,
                 )
                 empty_context_count += 1
@@ -178,7 +182,7 @@ class EvaluationOrchestrator:
             })
 
         logger.info(
-            "Generation dataset built — %d samples (%d will be skipped due to empty contexts)",
+            "Generation dataset built — %d samples (%d with empty contexts)",
             len(generation_data), empty_context_count,
         )
 
@@ -286,7 +290,7 @@ class EvaluationOrchestrator:
                     reader = csv.DictReader(f)
                     for row in reader:
                         query = row.get("query", "").strip()
-                        chunks_str = row.get("final_retrieved_chunks", "[]")
+                        chunks_str = row.get("final_retrieved_chunks")
                         try:
                             chunks = ast.literal_eval(chunks_str)
                             if isinstance(chunks, list):

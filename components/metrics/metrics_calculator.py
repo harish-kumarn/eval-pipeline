@@ -163,7 +163,7 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                 if isinstance(c, str) and c.strip()
             ]
 
-            if not contexts or not all([
+            if not all([
                 d.get("question", "").strip(),
                 d.get("answer", "").strip(),
                 d.get("ground_truth", "").strip(),
@@ -252,12 +252,15 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         metric_groups = []
 
         if base_metrics:
-            metric_groups.append({
-                "metrics": base_metrics,
-                "gt_field": "ground_truth",
-                "samples": valid,
-                "label": "base_metrics",
-            })
+            # Only run context-dependent metrics on samples with at least one non-empty context
+            valid_for_base = [d for d in valid if d.get("contexts")]
+            if valid_for_base:
+                metric_groups.append({
+                    "metrics": base_metrics,
+                    "gt_field": "ground_truth",
+                    "samples": valid_for_base,
+                    "label": "base_metrics",
+                })
 
         if run_ac:
             from ragas.metrics import answer_correctness

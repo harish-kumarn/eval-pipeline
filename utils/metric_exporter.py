@@ -1,8 +1,8 @@
 import csv
 import json
-import logging
-import re
 import sqlite3
+import statistics
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -14,207 +14,300 @@ logger = setup_logger(name="eval_pipeline", tag="EXPORT METRICS")
 _UNSAFE_CHARS = re.compile(r"[^\w\-]")
 
 
-# ── Generic writers ────────────────────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+def _safe_name(name: str) -> str:
+    stem = Path(name).stem
+    return _UNSAFE_CHARS.sub("_", stem.strip()).lower() or "eval_results"
 
 
-def save_to_sqlite(db_path: Path, schema_sql: str, insert_sql: str, params_list: List[tuple]) -> Path:
-    """Ensure a table exists then batch-insert all rows into *db_path*."""
-    db_path = Path(db_path).resolve()
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(str(db_path)) as conn:
-        conn.execute(schema_sql)
-        conn.executemany(insert_sql, params_list)
-    logger.info("[metric_exporter] %d rows → %s", len(params_list), db_path)
-    return db_path
-
-
-# ── Internal helpers ───────────────────────────────────────────────────────────
-
-def _load_visionrag_lookup(visionrag_path: str | Path) -> Dict[str, Dict[str, Any]]:
-    """Load visionragresult.json → {qid: {ground_truth_chunk_id, retrieved_chunk_ids}}."""
-    path = Path(visionrag_path)
+def _load_visionrag_lookup(path: str | Path) -> Dict[str, Dict[str, Any]]:
+    path = Path(path)
     if not path.exists():
-        logger.info("[metric_exporter] visionragresult not found: %s", path)
+        logger.warning("visionragresult not found: %s", path)
         return {}
+
     try:
         entries = json.loads(path.read_text(encoding="utf-8"))
         return {
             e["qid"]: {
                 "ground_truth_chunk_id": e.get("ground_truth_chunk_id", ""),
-                "retrieved_chunk_ids":   e.get("retrieved_chunk_ids", []),
+                "retrieved_chunk_ids": e.get("retrieved_chunk_ids", []),
+                "generated_answer": e.get("generated_answer", ""),
             }
             for e in entries if "qid" in e
         }
     except Exception as exc:
-        logger.info("[metric_exporter] Failed to load visionrag lookup: %s", exc)
+        logger.warning("Failed to load visionrag lookup: %s", exc)
         return {}
 
 
-def _load_csv_log(log_path: Path) -> Dict[str, Dict[str, Any]]:
-    """Load backend CSV log indexed by query text."""
-    if not log_path.exists():
-        logger.warning("[metric_exporter] CSV log not found: %s", log_path)
+def _load_csv_log(path: Optional[Path]) -> Dict[str, Dict[str, Any]]:
+    if not path or not path.exists():
+        logger.warning("CSV log not found: %s", path)
         return {}
 
-    log_data = {}
+    data = {}
     try:
-        with open(log_path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
+            # Use columns found in the file
             for row in reader:
-                q_text = row.get("query", "").strip()
-                if q_text:
-                    log_data[q_text] = {
-                        "reformulated_query":     row.get("reformulated_query", ""),
-                        "vector_chunkid":         row.get("vector_chunk_ids", "[]"),
-                        "bm25_chunkid":           row.get("bm25_chunk_ids", "[]"),
-                        "pre_rank_chunkid":       row.get("pre_rerank_chunk_ids", "[]"),
-                        "post_rerank_chunk_id":   row.get("post_rerank_chunk_ids", "[]"),
-                        "final_retrieved_chunks": row.get("final_retrieved_chunks", "[]"),
-                    }
+                q = (row.get("query") or row.get("question") or "").strip()
+                if not q:
+                    continue
+                
+                # Try multiple aliases for each field
+                def _get_alias(keys):
+                    for k in keys:
+                        v = row.get(k)
+                        if v is not None: return v
+                    return ""
+
+                data[q] = {
+                    "reformulated_query": _get_alias(["reformulated_query", "reformulated_question"]),
+                    "vector_chunk_ids": _get_alias(["vector_chunk_ids", "vector_search"]),
+                    "bm25_chunk_ids": _get_alias(["bm25_chunk_ids", "bm25"]),
+                    "pre_rerank_chunk_ids": _get_alias(["pre_rerank_chunk_ids", "before_rr"]),
+                    "post_rerank_chunk_ids": _get_alias(["post_rerank_chunk_ids", "after_rr"]),
+                    "final_retrieved_chunks": _get_alias(["final_retrieved_chunks", "retrieved"]),
+                }
     except Exception as e:
-        logger.error("[metric_exporter] Error reading CSV log %s: %s", log_path, e)
-    return log_data
+        logger.error("Error reading CSV log %s: %s", path, e)
+
+    return data
 
 
-def _merge(
-    retrieval_per_query: List[Dict[str, Any]],
-    generation_per_query: List[Dict[str, Any]],
-    visionrag_lookup: Optional[Dict[str, Dict[str, Any]]] = None,
-    csv_log_lookup: Optional[Dict[str, Dict[str, Any]]] = None,
+def build_rows(
+    retrieval: List[Dict[str, Any]],
+    generation: List[Dict[str, Any]],
+    top_k: int,
+    visionrag: Dict[str, Dict[str, Any]],
+    csv_log: Dict[str, Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Join retrieval + generation + CSV log rows by qid/query into flat dicts."""
-    visionrag_lookup = visionrag_lookup or {}
-    csv_log_lookup   = csv_log_lookup or {}
-    gen_idx = {g["qid"]: g for g in generation_per_query}
-    rows: List[Dict[str, Any]] = []
 
-    for sno, r in enumerate(retrieval_per_query, start=1):
-        qid   = r.get("qid", "")
-        q_text = r.get("query", "").strip()
-        g     = gen_idx.get(qid, {})
-        parts = qid.split("_", 1)
-        vr    = visionrag_lookup.get(qid, {})
-        cl    = csv_log_lookup.get(q_text, {})
+    gen_map = {g["qid"]: g for g in generation}
+    rows = []
+
+    for i, r in enumerate(retrieval, 1):
+        qid = r.get("qid", "")
+        q = (r.get("query") or "").strip()
+
+        g = gen_map.get(qid, {})
+        vr = visionrag.get(qid, {})
+        cl = csv_log.get(q, {})
+
+        retrieved_chunks = (
+            cl.get("retrieved")
+            or vr.get("retrieved_chunk_ids")
+            or r.get("retrieved_chunk_ids", [])
+        )
+
+        if isinstance(retrieved_chunks, list):
+            retrieved_chunks = " | ".join(retrieved_chunks)
 
         rows.append({
-            "sno":     sno,
-            "qid":     parts[0],
-            "chunkID": parts[1] if len(parts) > 1 else "",
-            "question": q_text,
-            "type":    r.get("tag", ""),
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "query": q,
+            "reformulated_query": cl.get("reformulated_query") or q,
+            "vector_chunk_ids": cl.get("vector_chunk_ids", ""),
+            "bm25_chunk_ids": cl.get("bm25_chunk_ids", ""),
+            "pre_rerank_chunk_ids": cl.get("pre_rerank_chunk_ids", ""),
+            "post_rerank_chunk_ids": cl.get("post_rerank_chunk_ids", ""),
+            "final_retrieved_chunks": retrieved_chunks,
+            "generated_answer": vr.get("generated_answer") or g.get("answer") or r.get("generated_answer", ""),
 
-            "mrr":       r.get("mrr"),
-            "recall":    r.get("recall"),
+            "qid": qid,
+            "type": r.get("tag", ""),
+            "top_k": top_k,
+            "actual_chunk": vr.get("ground_truth_chunk_id") or r.get("ground_truth_chunk_id", ""),
+
+            "mrr": r.get("mrr"),
+            "recall": r.get("recall"),
             "precision": r.get("precision"),
-            "ndcg":      r.get("ndcg"),
+            "ndcg": r.get("ndcg"),
 
-            "generated_answer": vr.get("generated_answer", ""),
-            "faithfulness":       g.get("faithfulness"),
-            "context_precision":  g.get("context_precision"),
+            "faithfulness": g.get("faithfulness"),
+            "context_precision": g.get("context_precision"),
             "answer_correctness": g.get("answer_correctness"),
-            
-            "actual_chunk":    vr.get("ground_truth_chunk_id", r.get("ground_truth_chunk_id", "")),
-            "predicted_chunk": " | ".join(vr.get("retrieved_chunk_ids", r.get("retrieved_chunk_ids", []))),
-
-            "reformulated_query":      cl.get("reformulated_query", ""),
-            "vector_chunkid":          cl.get("vector_chunkid", "[]"),
-            "bm25_chunkid":            cl.get("bm25_chunkid", "[]"),
-            "pre_rank_chunkid":        cl.get("pre_rank_chunkid", "[]"),
-            "post_rerank_chunk_id":    cl.get("post_rerank_chunk_id", "[]"),
-            "final_retrieved_chunks":  cl.get("final_retrieved_chunks", "[]"),
         })
+
     return rows
 
 
-def _build_rows(
-    retrieval_per_query: List[Dict[str, Any]],
-    generation_per_query: List[Dict[str, Any]],
-    visionrag_path: str | Path,
-    log_path: Optional[Path] = None
-) -> List[Dict[str, Any]]:
-    visionrag_lookup = _load_visionrag_lookup(visionrag_path)
-    csv_log_lookup   = _load_csv_log(log_path) if log_path else None
-    return _merge(retrieval_per_query, generation_per_query, visionrag_lookup, csv_log_lookup)
+# ── Exporters ───────────────────────────────────────────────────────────────
 
-
-def _safe_name(name: str) -> str:
-    """Sanitize table name to be alphanumeric + underscores."""
-    stem = Path(name).stem
-    return _UNSAFE_CHARS.sub("_", stem.strip()) or "eval_results"
-
-
-# ── Public API ─────────────────────────────────────────────────────────────────
-
-
-def export_metrics_to_db(
-    retrieval_per_query: List[Dict[str, Any]],
-    generation_per_query: List[Dict[str, Any]],
+def export_to_csv(
+    retrieval: List[Dict[str, Any]],
+    generation: List[Dict[str, Any]],
     output_dir: str | Path,
     visionrag_path: str | Path,
+    top_k: int,
+    log_path: Optional[Path] = None,
+    csv_filename: Optional[str] = None,
+) -> Path:
+    """Prepare and export metrics to a CSV file."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    visionrag = _load_visionrag_lookup(visionrag_path)
+    csv_log = _load_csv_log(log_path)
+    rows = build_rows(retrieval, generation, top_k, visionrag, csv_log)
+
+    if not csv_filename:
+        csv_filename = "evaluation_results.csv"
+    
+    csv_path = output_dir / csv_filename
+    
+    if not rows:
+        return csv_path
+
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+
+    logger.info("CSV saved → %s", csv_path)
+    return csv_path
+
+
+def export_to_db(
+    retrieval: List[Dict[str, Any]],
+    generation: List[Dict[str, Any]],
+    output_dir: str | Path,
+    visionrag_path: str | Path,
+    top_k: int,
+    hybrid_search: bool = True,
+    query_reformulation: bool = False,
+    reranking: bool = False,
     log_path: Optional[Path] = None,
     table_name: Optional[str] = None,
-    db_filename: str = "eval_results.db",
+    db_filename: str = "metrics.db",
+    final_csv_name: Optional[str] = None,
 ) -> Path:
-    """Append metrics to a dedicated experiment table with refined column order."""
-    rows = _build_rows(retrieval_per_query, generation_per_query, visionrag_path, log_path)
-    
-    experiment_name = table_name or (log_path.stem if log_path else "evaluation_results")
-    safe_table_name = _safe_name(experiment_name)
-    
-    # 1. Generate Schema
-    schema_sql = f"""
-    CREATE TABLE IF NOT EXISTS "{safe_table_name}" (
-        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        qid                     TEXT,
-        timestamp               TEXT    NOT NULL,
-        question                TEXT,
-        reformulated_query      TEXT,
-        type                    TEXT,
-        vector_chunkid          TEXT,
-        bm25_chunkid            TEXT,
-        pre_rerank_chunkid      TEXT,
-        post_rerank_chunkid     TEXT,
-        final_retrieved_chunk   TEXT,
-        actual_chunk            TEXT,
-        predicted_chunk         TEXT,
-        mrr                     REAL,
-        recall                  REAL,
-        precision_score         REAL,
-        ndcg                    REAL,
-        faithfulness            REAL,
-        context_precision       REAL,
-        answer_correctness      REAL
-    )
-    """
-    
-    # 2. Generate Insert SQL (Columns ordered as requested)
-    columns = [
-        "qid", "timestamp", "question", "reformulated_query", "type",
-        "vector_chunkid", "bm25_chunkid", "pre_rerank_chunkid", "post_rerank_chunkid", "final_retrieved_chunk",
-        "actual_chunk", "predicted_chunk",
-        "mrr", "recall", "precision_score", "ndcg",
-        "faithfulness", "context_precision", "answer_correctness"
-    ]
-    placeholders = ", ".join(["?"] * len(columns))
-    insert_sql = f'INSERT INTO "{safe_table_name}" ({", ".join(columns)}) VALUES ({placeholders})'
-    
-    cur_ts = datetime.now().isoformat()
-    db     = Path(output_dir) / db_filename
-    
-    params = [
-        (
-            r["qid"], cur_ts, r["question"], r["reformulated_query"], r["type"],
-            r["vector_chunkid"], r["bm25_chunkid"], r["pre_rank_chunkid"], r["post_rerank_chunk_id"], r["final_retrieved_chunks"],
-            r["actual_chunk"], r["predicted_chunk"],
-            r["mrr"], r["recall"], r["precision"], r["ndcg"],
-            r["faithfulness"], r["context_precision"], r["answer_correctness"]
+    """Prepare and export metrics to an SQLite database."""
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    db_path = output_dir / db_filename
+
+    visionrag = _load_visionrag_lookup(visionrag_path)
+    csv_log = _load_csv_log(log_path)
+    rows = build_rows(retrieval, generation, top_k, visionrag, csv_log)
+
+
+    table = _safe_name(table_name or "evaluation_results")
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(f"""
+        CREATE TABLE IF NOT EXISTS "{table}" (
+            id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp             TEXT,
+            query                 TEXT,
+            type                  TEXT,
+            top_k                 INTEGER,
+            reformulated_query    TEXT,
+            vector_chunk_ids      TEXT,
+            bm25_chunk_ids        TEXT,
+            pre_rerank_chunk_ids  TEXT,
+            post_rerank_chunk_ids TEXT,
+            final_retrieved_chunks TEXT,
+            actual_chunk          TEXT,
+            generated_answer      TEXT,
+            mrr                   REAL,
+            recall                REAL,
+            precision             REAL,
+            ndcg                  REAL,
+            faithfulness          REAL,
+            context_precision     REAL,
+            answer_correctness    REAL
         )
-        for r in rows
-    ]
-    
-    return save_to_sqlite(db, schema_sql, insert_sql, params)
+        """)
 
+        # ✅ EXACT MATCH to table (excluding id)
+        cols = [
+            "timestamp",
+            "query",
+            "type",
+            "top_k",
+            "reformulated_query",
+            "vector_chunk_ids",
+            "bm25_chunk_ids",
+            "pre_rerank_chunk_ids",
+            "post_rerank_chunk_ids",
+            "final_retrieved_chunks",
+            "actual_chunk",
+            "generated_answer",
+            "mrr",
+            "recall",
+            "precision",
+            "ndcg",
+            "faithfulness",
+            "context_precision",
+            "answer_correctness",
+        ]
 
+        conn.executemany(
+            f'''
+            INSERT INTO "{table}" ({", ".join(cols)})
+            VALUES ({", ".join(["?"] * len(cols))})
+            ''',
+            [tuple(r.get(c) for c in cols) for r in rows],
+        )
 
+        # ── INDEX TABLE ─────────────────────────────────────────────
 
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS "index" (
+            table_name TEXT PRIMARY KEY,
+            timestamp TEXT,
+            final_csv_name TEXT,
+            hybrid_search INTEGER,
+            query_reformulation INTEGER,
+            reranking INTEGER,
+            mrr_average REAL,
+            recall_average REAL,
+            precision_average REAL,
+            ndcg_average REAL,
+            faithfulness_average REAL,
+            context_precision_average REAL,
+            answer_correctness_average REAL
+        )
+        """)
 
+        def avg(k):
+            vals = [r.get(k) for r in rows if r.get(k) is not None]
+            return round(statistics.mean(vals), 6) if vals else None
+
+        conn.execute("""
+        INSERT INTO "index" (
+            table_name, timestamp, final_csv_name, hybrid_search, query_reformulation, reranking,
+            mrr_average, recall_average, precision_average, ndcg_average,
+            faithfulness_average, context_precision_average, answer_correctness_average
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(table_name) DO UPDATE SET
+            timestamp=excluded.timestamp,
+            final_csv_name=excluded.final_csv_name,
+            hybrid_search=excluded.hybrid_search,
+            query_reformulation=excluded.query_reformulation,
+            reranking=excluded.reranking,
+            mrr_average=excluded.mrr_average,
+            recall_average=excluded.recall_average,
+            precision_average=excluded.precision_average,
+            ndcg_average=excluded.ndcg_average,
+            faithfulness_average=excluded.faithfulness_average,
+            context_precision_average=excluded.context_precision_average,
+            answer_correctness_average=excluded.answer_correctness_average
+        """, (
+            table,
+            datetime.now().strftime("%d_%m_%H_%M"),
+            final_csv_name,
+            int(hybrid_search),
+            int(query_reformulation),
+            int(reranking),
+            avg("mrr"), avg("recall"), avg("precision"), avg("ndcg"),
+            avg("faithfulness"), avg("context_precision"), avg("answer_correctness"),
+        ))
+
+    logger.info("DB saved → %s", db_path)
+    return db_path
