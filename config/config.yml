@@ -1,9 +1,9 @@
 ###################################################3
 
-csv_name: qr1_rr1_hy1
+csv_name: qr1_rr0_hy1
 
 query_reformulation: true
-use_reranking: true
+use_reranking: false
 use_hybrid: true
 
 

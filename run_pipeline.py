@@ -107,7 +107,7 @@ def main() -> None:
             reranking=CONFIG["use_reranking"],
             log_path=vrag_client_csv,
             table_name=eval_file_name,
-            db_filename="../../eval_dashboard/metrics.db", # Since run_output_dir is ./eval_results/<name>
+            db_filename="../../eval_dashboard/metrics.db", 
             final_csv_name=final_csv_name
         )
         logger.info("🗄️  Per-question DB  → %s", db_out)
