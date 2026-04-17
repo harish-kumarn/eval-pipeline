@@ -33,7 +33,6 @@ def main() -> None:
     try:
         # 1) Setup Run Metadata
         base_output_dir = Path(CONFIG["results_dirs"]["output_dir"])
-        safe_collection = (CONFIG.get("collection_name") or "unknown").replace("/", "_")
         csv_name_base = CONFIG.get("csv_name", "eval_run")
         ts = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
         

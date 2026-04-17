@@ -1,49 +1,48 @@
 {
-  "chunk7": {
-    "text": "# WARNING:\n\nThe engine exhaust from this product contains chemicals known to the State of California to cause cancer, birth defects or other reproductive harm.\n\nTHE AIR INDEX OF THIS ENGINE IS 3\n0 2 4 6 8 10\nMOST CLEAN LEAST CLEAN\nNOTE: THE LOWER THE AIR INDEX, THE LESS POLLUTION\nTHIS ENGINE IS CERTIFIED TO BE EMISSIONS\nCOMPLIANT FOR THE USE: EXTENDED: 300HOURS\nCHECK THE OWNER'S MANUAL FOR FURTHER DETAILS\n\nCER230HT\n\n# FEDERAL EMISSION CONTROL WARRANTY STATEMENT YOUR WARRANTY RIGHTS AND OBLIGATIONS\n\nThe U.S. Environmental Protection Agency (EPA) and Maruyama Manufacturing Company, Inc. are pleased to explain the emission control system warranty on your small off-road engine. New 1997 and later model year small off-road engines must be designed, built and equipped, at the time of sale, to meet the U.S. EPA regulations for small off-road engines. The equipment engine must be free from defects in materials and workmanship which cause it to fail to conform with U.S. EPA standards for the first two years of engine use from the date of sale to the ultimate purchaser. Maruyama Manufacturing Company, Inc. must warrant the emission control system on your small off-road engine for the period of time listed above provided there has been no abuse, neglect or improper maintenance of your small off-road engine.\n\n## Emission durability of 300 hours.\n\nYour emission control system may include parts such as the carburetor or fuel injection system, the ignition system, and catalytic converter. Also included may be hoses, belts, and connectors and other emission related assemblies.\n\nWhere a warrantable condition exists, Maruyama Manufacturing Company, Inc. will repair your small off-road engine at no cost to you, including diagnosis (if the diagnostic work is performed at an authorized dealer), parts, and labor.\n\n## MANUFACTURER'S WARRANTY COVERAGE:\n\nThe 1997 and later model year small off-road engines are warranted for two years. If any emission-related part on your engine is defective, the part will be repaired or replaced by Maruyama Manufacturing Company, Inc. free of charge.",
+  "chunk1": {
+    "text": "MARUYAMA\n\n# OWNER'S/OPERATOR'S MANUAL\n\nPS30\nDedicated Pole Saw\n(Pruner)\n\n# The POWER in Outdoor Power\n\nCompletely read and understand this manual PRIOR to using this product.\nLea y entienda este manual a fondo, ANTES de usar este producto.\nLisez complètement et comprenez ce manuel AVANT d'utiliser ce produit.",
     "images": [
-      "pdf_images/page_4_img_1.png"
+      "pdf_images/page_1_img_1.png"
     ],
-    "chunk_description": "This chunk details a California Proposition 65 warning, the engine's Air Index (3) and associated emissions compliance, the CER230HT model, and the Federal Emission Control Warranty Statement from Maruyama, covering EPA regulations, warranty duration, emission durability, included parts, and repair conditions.",
+    "chunk_description": "Cover page for the Maruyama PS30 Dedicated Pole Saw owner's/operator's manual, emphasizing the importance of reading the manual before product use.",
     "overlapping": false,
-    "overlapping_reason": "",
+    "overlapping_reason": "This is the first page of the document and the content forms a self-contained title/introduction. The next page begins a new distinct section (Warranty Statement) without direct content flow.",
     "semantic_completeness_score": 9.5,
     "questions": {
       "direct": [
         {
-          "question": "What chemicals are known to the State of California to be present in the engine exhaust of this product?",
-          "answer_extract": "The engine exhaust from this product contains chemicals known to the State of California to cause cancer, birth defects or other reproductive harm.",
-          "confidence": 1.0
-        }
-      ],
-      "indirect": [
-        {
-          "question": "What actions can void the emission control system warranty provided by Maruyama Manufacturing Company, Inc.?",
-          "answer_extract": "Maruyama Manufacturing Company, Inc. must warrant the emission control system on your small off-road engine for the period of time listed above provided there has been no abuse, neglect or improper maintenance of your small off-road engine.",
-          "confidence": 0.88
+          "question": "What product model is covered by this Maruyama owner's manual?",
+          "answer_extract": "PS30\nDedicated Pole Saw\n(Pruner)",
+          "confidence": 0.95
         },
         {
-          "question": "Under what condition will Maruyama Manufacturing Company, Inc. cover diagnosis, parts, and labor costs for a small off-road engine repair?",
-          "answer_extract": "Where a warrantable condition exists, Maruyama Manufacturing Company, Inc. will repair your small off-road engine at no cost to you, including diagnosis (if the diagnostic work is performed at an authorized dealer), parts, and labor.",
-          "confidence": 0.9
+          "question": "What type of manual is provided for the Maruyama PS30?",
+          "answer_extract": "OWNER'S/OPERATOR'S MANUAL",
+          "confidence": 0.98
+        },
+        {
+          "question": "What is the critical instruction for users before operating the Maruyama PS30?",
+          "answer_extract": "Completely read and understand this manual PRIOR to using this product.",
+          "confidence": 0.98
         }
-      ]
+      ],
+      "indirect": []
     },
-    "index_concept_vocabulary": "California Proposition 65, engine emissions, federal warranty, emission control system, small off-road engine, Maruyama warranty, EPA regulations, air index, CER230HT, emission durability",
-    "layout_complexity": "moderate",
-    "layout_complexity_score": 5,
+    "index_concept_vocabulary": "Maruyama PS30, pole saw manual, operator instructions, owner's manual, product information",
+    "layout_complexity": "simple",
+    "layout_complexity_score": 2,
     "layout_elements": [
       "text_blocks",
       "headings",
-      "warnings",
-      "labels",
-      "paragraphs"
+      "image",
+      "multilingual_instructions"
     ],
     "ocr_corrections": [
       {
-        "original": "[missing AIR INDEX block and CER230HT]",
-        "corrected": "THE AIR INDEX OF THIS ENGINE IS 3\n0 2 4 6 8 10\nMOST CLEAN LEAST CLEAN\nNOTE: THE LOWER THE AIR INDEX, THE LESS POLLUTION\nTHIS ENGINE IS CERTIFIED TO BE EMISSIONS\nCOMPLIANT FOR THE USE: EXTENDED: 300HOURS\nCHECK THE OWNER'S MANUAL FOR FURTHER DETAILS\n\nCER230HT",
-        "confidence": 1.0
+        "original_text": "MARLYAMA",
+        "corrected_text": "MARUYAMA",
+        "confidence": 0.99,
+        "reason": "Clear character misread (L vs U based on visual analysis and brand recognition)."
       }
     ],
     "content_continuation": {
@@ -52,6 +51,6 @@
       "continuation_points": []
     },
     "chunk_quality_score": 9.2,
-    "page_no": 4
+    "page_no": 1
   }
 }
