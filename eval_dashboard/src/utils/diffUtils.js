@@ -1,6 +1,6 @@
 const METRIC_COLUMNS = [
     'mrr', 'recall', 'precision', 'ndcg',
-    'faithfulness', 'context_precision', 'answer_correctness',
+    'faithfulness', 'context_precision', 'answer_correctness', 'answer_relevancy',
 ]
 
 /**

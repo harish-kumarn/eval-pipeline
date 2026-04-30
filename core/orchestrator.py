@@ -237,10 +237,11 @@ class EvaluationOrchestrator:
 
         if generation_metrics:
             logger.info(
-                "✅ Generation metrics — Faithfulness=%.3f, ContextPrecision=%.3f, AnswerCorrectness=%.3f",
+                "✅ Generation metrics — Faithfulness=%.3f, ContextPrecision=%.3f, AnswerCorrectness=%.3f, AnswerRelevancy=%.3f",
                 generation_metrics.faithfulness or 0,
                 generation_metrics.context_precision or 0,
                 generation_metrics.answer_correctness or 0,
+                generation_metrics.answer_relevancy or 0
             )
             generation_metrics_dict = generation_metrics.to_dict()
             FileHandler.save_json(generation_metrics_dict, self.output_dir / "generator_metrics.json")
@@ -251,10 +252,44 @@ class EvaluationOrchestrator:
 
         # 3. Token usage report
         token_summary = tracker.get_summary()
+
+        # ── per-query breakdown (logged inline so it appears during the run) ──
+        per_q = token_summary.get("per_question", {})
+        logger.info("Starting RAGAS token calculation")
+        if per_q:
+            logger.info("── Token usage per query ──────────────────────────────")
+            logger.info(
+                "  %-40s  %8s  %10s  %9s  %7s",
+                "Query ID", "Prompt", "Completion", "Embedding", "Total",
+            )
+            logger.info("  " + "-" * 80)
+            for qid, q_data in sorted(per_q.items()):
+                logger.info(
+                    "  %-40s  %8d  %10d  %9d  %7d",
+                    qid,
+                    q_data["prompt_tokens"],
+                    q_data["completion_tokens"],
+                    q_data["embedding_tokens"],
+                    q_data["total_tokens"],
+                )
+                # also log the per-metric breakdown for this query
+                for metric_name, m_data in sorted(q_data.get("per_metric", {}).items()):
+                    logger.info(
+                        "      ├─ %-36s  %8d  %10d  %9d  %7d",
+                        metric_name,
+                        m_data["prompt_tokens"],
+                        m_data["completion_tokens"],
+                        m_data["embedding_tokens"],
+                        m_data["total_tokens"],
+                    )
+            logger.info("  " + "-" * 80)
+        else:
+            logger.info("No per-query token data recorded (RAGAS may have made no LLM calls).")
+
         FileHandler.save_json(token_summary, self.output_dir / "token_usage.json")
         total = token_summary["total"]
         logger.info(
-            "✅ Token usage — prompt=%d, completion=%d, embedding≈%d, total=%d",
+            "✅ Token usage TOTAL — prompt=%d, completion=%d, embedding≈%d, total=%d",
             total["prompt_tokens"], total["completion_tokens"],
             total["embedding_tokens"], total["total_tokens"],
         )

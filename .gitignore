@@ -19,4 +19,3 @@ core/api.py
 logs/
 eval_results/
 pyproject.toml
-data/target_chunks.json

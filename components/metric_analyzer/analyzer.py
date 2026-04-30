@@ -56,7 +56,7 @@ class RAGMetricAnalyzer:
         if kind == "retrieval":
             keys = ("recall", "precision", "mrr")
         else:
-            keys = ("faithfulness", "answer_correctness", "answer_relevancy")
+            keys = ("faithfulness", "answer_correctness", "context_precision")
 
         values = [metrics[k] for k in keys if k in metrics]
 

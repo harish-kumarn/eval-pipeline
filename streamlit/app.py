@@ -76,7 +76,7 @@ def performance_analysis_page():
             st.metric("Avg Faithfulness", f"{avg_faith:.1f}%")
         
         with col6:
-            avg_rel = df_filtered['gen_answer_relevancy'].mean() * 100
+            avg_rel = df_filtered['gen_'].mean() * 100
             st.metric("Avg Answer Relevancy", f"{avg_rel:.1f}%")
         
         with col7:
@@ -145,7 +145,7 @@ def performance_analysis_page():
             
             with col1:
                 # Generation metrics comparison
-                gen_metrics = df_filtered[['gen_faithfulness', 'gen_answer_relevancy', 'gen_answer_correctness']].mean()
+                gen_metrics = df_filtered[['gen_faithfulness', 'gen_', 'gen_answer_correctness']].mean()
                 fig_gen = go.Figure(data=[
                     go.Bar(
                         x=['Faithfulness', 'Relevancy', 'Correctness'],
@@ -181,7 +181,7 @@ def performance_analysis_page():
                 x='gen_faithfulness',
                 y='gen_answer_correctness',
                 color='tag' if 'tag' in df_filtered.columns else None,
-                size='gen_answer_relevancy',
+                size='gen_',
                 hover_data=['query_id'],
                 title="Faithfulness vs Correctness (sized by Relevancy)",
                 labels={'gen_faithfulness': 'Faithfulness', 'gen_answer_correctness': 'Correctness'}
@@ -227,7 +227,7 @@ def performance_analysis_page():
                 'Retrieval': df_filtered['retrieval_score'].mean(),
                 'Generation': df_filtered['generation_score'].mean(),
                 'Faithfulness': df_filtered['gen_faithfulness'].mean(),
-                'Relevancy': df_filtered['gen_answer_relevancy'].mean(),
+                'Relevancy': df_filtered['gen_'].mean(),
                 'Correctness': df_filtered['gen_answer_correctness'].mean()
             }
             

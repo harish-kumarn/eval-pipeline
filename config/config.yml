@@ -1,10 +1,11 @@
 ###################################################3
 
-csv_name: qr1_rr0_hy1
+csv_name: token_calculation_polesaw
 
 query_reformulation: true
-use_reranking: false
+use_reranking: true
 use_hybrid: true
+
 
 
 #####################################################
@@ -16,7 +17,7 @@ k: 3
 chunk_format: "chunk{id}"
 
 metrics_config: null
-collection_name: pole_saw
+collection_name: pole_saw1
 VISIONRAG_URL: "http://127.0.0.1:8000/api/v1/evaluation/users/{user_id}/chat"
 metrics_config_path: "config/metrics_config.json"
 

@@ -17,7 +17,8 @@ const METRIC_COLORS = {
     ndcg: '#34d399', // emerald-400
     faithfulness: '#f472b6', // pink-400
     context_precision: '#a78bfa', // violet-400
-    answer_correctness: '#fb7185' // rose-400
+    answer_correctness: '#fb7185', // rose-400
+    answer_relevancy: '#60a5fa', // blue-400
 }
 
 const METRIC_LABELS = {
@@ -27,7 +28,8 @@ const METRIC_LABELS = {
     ndcg: 'NDCG',
     faithfulness: 'Faithfulness',
     context_precision: 'Context Precision',
-    answer_correctness: 'Answer Correctness'
+    answer_correctness: 'Answer Correctness',
+    answer_relevancy: 'Answer Relevancy',
 }
 
 export default function AnalyticsDashboard() {

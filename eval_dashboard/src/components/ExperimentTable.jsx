@@ -17,7 +17,7 @@ export const ALL_COLUMNS = [
     'vector_chunk_ids', 'bm25_chunk_ids', 'pre_rerank_chunk_ids', 'post_rerank_chunk_ids', 'final_retrieved_chunks',
     'actual_chunk',
     'mrr', 'recall', 'precision', 'ndcg',
-    'faithfulness', 'context_precision', 'answer_correctness',
+    'faithfulness', 'context_precision', 'answer_correctness', 'answer_relevancy',
 ]
 
 export const DEFAULT_VISIBLE_COLUMNS = [

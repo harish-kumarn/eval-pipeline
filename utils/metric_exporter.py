@@ -104,7 +104,19 @@ def build_rows(
         )
 
         if isinstance(retrieved_chunks, list):
-            retrieved_chunks = " | ".join(retrieved_chunks)
+            retrieved_chunks = str(retrieved_chunks[:top_k])
+        elif isinstance(retrieved_chunks, str):
+            if "|" in retrieved_chunks:
+                rc_list = [c.strip() for c in retrieved_chunks.split("|") if c.strip()]
+                retrieved_chunks = str(rc_list[:top_k])
+            else:
+                import ast
+                try:
+                    rc_list = ast.literal_eval(retrieved_chunks)
+                    if isinstance(rc_list, list):
+                        retrieved_chunks = str(rc_list[:top_k])
+                except Exception:
+                    pass
 
         rows.append({
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -130,6 +142,7 @@ def build_rows(
             "faithfulness": g.get("faithfulness"),
             "context_precision": g.get("context_precision"),
             "answer_correctness": g.get("answer_correctness"),
+            "answer_relevancy": g.get("answer_relevancy"),
         })
 
     return rows
@@ -192,110 +205,103 @@ def export_to_db(
     db_path = output_dir / db_filename
 
     visionrag = _load_visionrag_lookup(visionrag_path)
-    csv_log = _load_csv_log(log_path)
-    rows = build_rows(retrieval, generation, top_k, visionrag, csv_log)
+    csv_log   = _load_csv_log(log_path)
+    rows      = build_rows(retrieval, generation, top_k, visionrag, csv_log)
+    table     = _safe_name(table_name or "evaluation_results")
 
+    METRIC_COLS = [
+        "mrr", "recall", "precision", "ndcg",
+        "faithfulness", "context_precision", "answer_correctness", "answer_relevancy",
+    ]
 
-    table = _safe_name(table_name or "evaluation_results")
+    ALL_COLS = [
+        "timestamp", "query", "type", "top_k",
+        "reformulated_query", "vector_chunk_ids", "bm25_chunk_ids",
+        "pre_rerank_chunk_ids", "post_rerank_chunk_ids",
+        "final_retrieved_chunks", "actual_chunk",
+        *METRIC_COLS,
+    ]
+
+    def avg(key: str) -> Optional[float]:
+        vals = [r[key] for r in rows if r.get(key) is not None]
+        return round(statistics.mean(vals), 6) if vals else None
 
     with sqlite3.connect(db_path) as conn:
-        conn.execute(f"""
-        CREATE TABLE IF NOT EXISTS "{table}" (
-            id                    INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp             TEXT,
-            query                 TEXT,
-            type                  TEXT,
-            top_k                 INTEGER,
-            reformulated_query    TEXT,
-            vector_chunk_ids      TEXT,
-            bm25_chunk_ids        TEXT,
-            pre_rerank_chunk_ids  TEXT,
-            post_rerank_chunk_ids TEXT,
-            final_retrieved_chunks TEXT,
-            actual_chunk          TEXT,
-            mrr                   REAL,
-            recall                REAL,
-            precision             REAL,
-            ndcg                  REAL,
-            faithfulness          REAL,
-            context_precision     REAL,
-            answer_correctness    REAL
-        )
-        """)
 
-        # ✅ EXACT MATCH to table (excluding id)
-        cols = [
-            "timestamp",
-            "query",
-            "type",
-            "top_k",
-            "reformulated_query",
-            "vector_chunk_ids",
-            "bm25_chunk_ids",
-            "pre_rerank_chunk_ids",
-            "post_rerank_chunk_ids",
-            "final_retrieved_chunks",
-            "actual_chunk",
-            "mrr",
-            "recall",
-            "precision",
-            "ndcg",
-            "faithfulness",
-            "context_precision",
-            "answer_correctness",
-        ]
+        # ── Main results table ───────────────────────────────────────────────
+        conn.execute(f"""
+            CREATE TABLE IF NOT EXISTS "{table}" (
+                id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp              TEXT,
+                query                  TEXT,
+                type                   TEXT,
+                top_k                  INTEGER,
+                reformulated_query     TEXT,
+                vector_chunk_ids       TEXT,
+                bm25_chunk_ids         TEXT,
+                pre_rerank_chunk_ids   TEXT,
+                post_rerank_chunk_ids  TEXT,
+                final_retrieved_chunks TEXT,
+                actual_chunk           TEXT,
+                mrr                    REAL,
+                recall                 REAL,
+                precision              REAL,
+                ndcg                   REAL,
+                faithfulness           REAL,
+                context_precision      REAL,
+                answer_correctness     REAL,
+                answer_relevancy       REAL
+            )
+        """)
 
         conn.executemany(
-            f'''
-            INSERT INTO "{table}" ({", ".join(cols)})
-            VALUES ({", ".join(["?"] * len(cols))})
-            ''',
-            [tuple(r.get(c) for c in cols) for r in rows],
+            f'INSERT INTO "{table}" ({", ".join(ALL_COLS)}) '
+            f'VALUES ({", ".join(["?"] * len(ALL_COLS))})',
+            [tuple(r.get(c) for c in ALL_COLS) for r in rows],
         )
 
-        # ── INDEX TABLE ─────────────────────────────────────────────
-
+        # ── Index table ──────────────────────────────────────────────────────
         conn.execute("""
-        CREATE TABLE IF NOT EXISTS "index" (
-            table_name TEXT PRIMARY KEY,
-            timestamp TEXT,
-            final_csv_name TEXT,
-            hybrid_search INTEGER,
-            query_reformulation INTEGER,
-            reranking INTEGER,
-            mrr_average REAL,
-            recall_average REAL,
-            precision_average REAL,
-            ndcg_average REAL,
-            faithfulness_average REAL,
-            context_precision_average REAL,
-            answer_correctness_average REAL
-        )
+            CREATE TABLE IF NOT EXISTS "index" (
+                table_name                  TEXT PRIMARY KEY,
+                timestamp                   TEXT,
+                final_csv_name              TEXT,
+                hybrid_search               INTEGER,
+                query_reformulation         INTEGER,
+                reranking                   INTEGER,
+                mrr_average                 REAL,
+                recall_average              REAL,
+                precision_average           REAL,
+                ndcg_average                REAL,
+                faithfulness_average        REAL,
+                context_precision_average   REAL,
+                answer_correctness_average  REAL,
+                answer_relevancy_average    REAL
+            )
         """)
 
-        def avg(k):
-            vals = [r.get(k) for r in rows if r.get(k) is not None]
-            return round(statistics.mean(vals), 6) if vals else None
-
         conn.execute("""
-        INSERT INTO "index" (
-            table_name, timestamp, final_csv_name, hybrid_search, query_reformulation, reranking,
-            mrr_average, recall_average, precision_average, ndcg_average,
-            faithfulness_average, context_precision_average, answer_correctness_average
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(table_name) DO UPDATE SET
-            timestamp=excluded.timestamp,
-            final_csv_name=excluded.final_csv_name,
-            hybrid_search=excluded.hybrid_search,
-            query_reformulation=excluded.query_reformulation,
-            reranking=excluded.reranking,
-            mrr_average=excluded.mrr_average,
-            recall_average=excluded.recall_average,
-            precision_average=excluded.precision_average,
-            ndcg_average=excluded.ndcg_average,
-            faithfulness_average=excluded.faithfulness_average,
-            context_precision_average=excluded.context_precision_average,
-            answer_correctness_average=excluded.answer_correctness_average
+            INSERT INTO "index" (
+                table_name, timestamp, final_csv_name,
+                hybrid_search, query_reformulation, reranking,
+                mrr_average, recall_average, precision_average, ndcg_average,
+                faithfulness_average, context_precision_average,
+                answer_correctness_average, answer_relevancy_average
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(table_name) DO UPDATE SET
+                timestamp                  = excluded.timestamp,
+                final_csv_name             = excluded.final_csv_name,
+                hybrid_search              = excluded.hybrid_search,
+                query_reformulation        = excluded.query_reformulation,
+                reranking                  = excluded.reranking,
+                mrr_average                = excluded.mrr_average,
+                recall_average             = excluded.recall_average,
+                precision_average          = excluded.precision_average,
+                ndcg_average               = excluded.ndcg_average,
+                faithfulness_average       = excluded.faithfulness_average,
+                context_precision_average  = excluded.context_precision_average,
+                answer_correctness_average = excluded.answer_correctness_average,
+                answer_relevancy_average   = excluded.answer_relevancy_average
         """, (
             table,
             datetime.now().strftime("%d_%m_%H_%M"),
@@ -304,7 +310,8 @@ def export_to_db(
             int(query_reformulation),
             int(reranking),
             avg("mrr"), avg("recall"), avg("precision"), avg("ndcg"),
-            avg("faithfulness"), avg("context_precision"), avg("answer_correctness"),
+            avg("faithfulness"), avg("context_precision"),
+            avg("answer_correctness"), avg("answer_relevancy"),
         ))
 
     logger.info("DB saved → %s", db_path)

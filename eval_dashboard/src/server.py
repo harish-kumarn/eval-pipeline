@@ -103,7 +103,7 @@ async def get_topk_sensitivity():
                         continue
                         
                     # Only select columns that actually exist
-                    available = [c for c in ["top_k", "mrr", "recall", "ndcg", "faithfulness"] if c in cols]
+                    available = [c for c in ["top_k", "mrr", "recall", "ndcg", "faithfulness", "answer_relevancy"] if c in cols]
                     if "top_k" not in available:
                         continue
                         
@@ -133,7 +133,7 @@ async def get_scatter_data():
             tables = conn.execute('SELECT table_name FROM "index"').fetchall()
             
             all_questions = []
-            target_cols = ["mrr", "recall", "faithfulness", "answer_correctness", "context_precision"]
+            target_cols = ["mrr", "recall", "faithfulness", "answer_correctness", "context_precision", "answer_relevancy"]
             
             for row in tables:
                 table = row["table_name"]

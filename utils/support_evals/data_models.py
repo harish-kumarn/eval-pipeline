@@ -1,12 +1,16 @@
 """Data models for the evaluation pipeline."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Input models
+# ──────────────────────────────────────────────────────────────────────────────
+
 @dataclass
 class Question:
-    """Represents a single question extracted from target chunks."""
+    """A single evaluation question, tied to a specific source chunk."""
     qid: str
     text: str
     chunk_id: str
@@ -14,9 +18,13 @@ class Question:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Pipeline result models
+# ──────────────────────────────────────────────────────────────────────────────
+
 @dataclass
 class RetrievalResult:
-    """Result from retriever module."""
+    """Output from the retriever stage."""
     qid: str
     question: str
     ground_truth_chunk: str
@@ -26,20 +34,12 @@ class RetrievalResult:
     error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "qid": self.qid,
-            "question": self.question,
-            "ground_truth_chunk": self.ground_truth_chunk,
-            "retrieved_chunks": self.retrieved_chunks,
-            "retrieved_docs": self.retrieved_docs,
-            "generated_answer": self.generated_answer,
-            "error": self.error,
-        }
+        return asdict(self)
 
 
 @dataclass
 class GenerationResult:
-    """Result from generator module."""
+    """Output from the generator stage."""
     qid: str
     question: str
     ground_truth: str
@@ -49,59 +49,66 @@ class GenerationResult:
     error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "qid": self.qid,
-            "question": self.question,
-            "ground_truth": self.ground_truth,
-            "retrieved_context": self.retrieved_context,
-            "generated_answer": self.generated_answer,
-            "retrieved_top_chunk": self.retrieved_top_chunk,
-            "error": self.error,
-        }
+        return asdict(self)
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Metrics models
+# ──────────────────────────────────────────────────────────────────────────────
 
 @dataclass
 class RetrievalMetrics:
-    """Aggregated retrieval metrics."""
+    """Aggregated retrieval metrics across all queries."""
+    k: int
+    total_queries: int
     mrr_at_k: Optional[float] = None
     recall_at_k: Optional[float] = None
     precision_at_k: Optional[float] = None
     ndcg_at_k: Optional[float] = None
     mean_rank: Optional[float] = None
-    k: int = 0
-    total_queries: int = 0
     per_query_metrics: List[Dict[str, Any]] = field(default_factory=list)
 
+    def __post_init__(self):
+        if self.k < 0:
+            raise ValueError(f"k must be non-negative, got {self.k}")
+        if self.total_queries < 0:
+            raise ValueError(f"total_queries must be non-negative, got {self.total_queries}")
+
     def to_dict(self) -> Dict[str, Any]:
-        return {k: v for k, v in {
-            "mrr@k": self.mrr_at_k,
-            "recall@k": self.recall_at_k,
-            "precision@k": self.precision_at_k,
-            "ndcg@k": self.ndcg_at_k,
-            "mean_rank": self.mean_rank,
-            "k": self.k,
-            "total_queries": self.total_queries,
-            "per_query_metrics": self.per_query_metrics,
-        }.items() if v is not None}
+        """
+        Returns all fields. Metric scores are None when not computed,
+        which is preserved so callers can distinguish 'not run' from '0.0'.
+        """
+        return {
+            "k":                  self.k,
+            "total_queries":      self.total_queries,
+            "mrr@k":              self.mrr_at_k,
+            "recall@k":           self.recall_at_k,
+            "precision@k":        self.precision_at_k,
+            "ndcg@k":             self.ndcg_at_k,
+            "mean_rank":          self.mean_rank,
+            "per_query_metrics":  self.per_query_metrics,
+        }
 
 
 @dataclass
 class GenerationMetrics:
-    """Aggregated generation metrics using RAGAS framework."""
+    """Aggregated RAGAS generation metrics across all queries."""
     faithfulness: Optional[float] = None
     context_precision: Optional[float] = None
     answer_correctness: Optional[float] = None
+    answer_relevancy: Optional[float] = None
     per_query_metrics: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {k: v for k, v in {
-            "faithfulness": self.faithfulness,
-            "context_precision": self.context_precision,
+        """
+        Returns all fields. Scores are None when not computed,
+        which is preserved so callers can distinguish 'not run' from '0.0'.
+        """
+        return {
+            "faithfulness":       self.faithfulness,
+            "context_precision":  self.context_precision,
             "answer_correctness": self.answer_correctness,
-            "per_query_metrics": self.per_query_metrics,
-        }.items() if v is not None}
-
-
-
-
-
+            "answer_relevancy":   self.answer_relevancy,
+            "per_query_metrics":  self.per_query_metrics,
+        }

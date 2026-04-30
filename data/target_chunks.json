@@ -1,48 +1,44 @@
 {
   "chunk1": {
-    "text": "MARUYAMA\n\n# OWNER'S/OPERATOR'S MANUAL\n\nPS30\nDedicated Pole Saw\n(Pruner)\n\n# The POWER in Outdoor Power\n\nCompletely read and understand this manual PRIOR to using this product.\nLea y entienda este manual a fondo, ANTES de usar este producto.\nLisez complètement et comprenez ce manuel AVANT d'utiliser ce produit.",
+    "text": "# Operation\n\n## Pruning thick branches\n\nAttempting to cut a thick branch in one go often results in the guide bar jamming in the branch or otherwise encountering difficulties in cutting. The method described below makes cutting thick branches easier:\n\n1. First of all, cut a section slightly away and on the lower side of the desired area of the branch to be cut.\n2. Then, start cutting from the upper side of the branch.\n3. hereafter, cut into the lower side where the desired area of branch is to be cut.\n4. Finally, cut through from the upper side where the branch is to be cut, cutting the branch off.\n\nIMPORTANT: If the guide bar or saw chain jams into the branch, do not force it. Widen the cut using a wedge to remove the pruner and try cutting it again. Forcing the pruner may damage the main unit of the pruner and cause a malfunction of the pruner.",
     "images": [
       "pdf_images/page_1_img_1.png"
     ],
-    "chunk_description": "Cover page for the Maruyama PS30 Dedicated Pole Saw owner's/operator's manual, emphasizing the importance of reading the manual before product use.",
+    "chunk_description": "Instructions for safely pruning thick branches using a specific four-step method and guidance on how to handle a jammed guide bar.",
     "overlapping": false,
-    "overlapping_reason": "This is the first page of the document and the content forms a self-contained title/introduction. The next page begins a new distinct section (Warranty Statement) without direct content flow.",
-    "semantic_completeness_score": 9.5,
+    "overlapping_reason": "",
+    "semantic_completeness_score": 9.0,
     "questions": {
       "direct": [
         {
-          "question": "What product model is covered by this Maruyama owner's manual?",
-          "answer_extract": "PS30\nDedicated Pole Saw\n(Pruner)",
-          "confidence": 0.95
-        },
-        {
-          "question": "What type of manual is provided for the Maruyama PS30?",
-          "answer_extract": "OWNER'S/OPERATOR'S MANUAL",
+          "question": "What is the initial step for pruning a thick branch with the pruner?",
+          "answer_extract": "First of all, cut a section slightly away and on the lower side of the desired area of the branch to be cut.",
           "confidence": 0.98
         },
         {
-          "question": "What is the critical instruction for users before operating the Maruyama PS30?",
-          "answer_extract": "Completely read and understand this manual PRIOR to using this product.",
-          "confidence": 0.98
+          "question": "What should be done if the guide bar or saw chain becomes jammed in a branch?",
+          "answer_extract": "If the guide bar or saw chain jams into the branch, do not force it. Widen the cut using a wedge to remove the pruner and try cutting it again.",
+          "confidence": 0.97
         }
       ],
       "indirect": []
     },
-    "index_concept_vocabulary": "Maruyama PS30, pole saw manual, operator instructions, owner's manual, product information",
-    "layout_complexity": "simple",
-    "layout_complexity_score": 2,
+    "index_concept_vocabulary": "pruner operation, thick branch pruning, guide bar jamming, saw chain tension adjustment, pruner safety, quick strap detachment",
+    "layout_complexity": "moderate",
+    "layout_complexity_score": 6,
     "layout_elements": [
       "text_blocks",
       "headings",
-      "image",
-      "multilingual_instructions"
+      "lists",
+      "warnings",
+      "images"
     ],
     "ocr_corrections": [
       {
-        "original_text": "MARLYAMA",
-        "corrected_text": "MARUYAMA",
+        "original": "looses",
+        "corrected": "loosens",
         "confidence": 0.99,
-        "reason": "Clear character misread (L vs U based on visual analysis and brand recognition)."
+        "reason": "visual misread of 'e' as 's' in 'loosens' based on image review"
       }
     ],
     "content_continuation": {
@@ -50,7 +46,7 @@
       "to_next_page": false,
       "continuation_points": []
     },
-    "chunk_quality_score": 9.2,
+    "chunk_quality_score": 9.1,
     "page_no": 1
   }
 }

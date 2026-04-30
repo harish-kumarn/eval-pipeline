@@ -16,13 +16,13 @@ def analyze_rag_flow(
     recall = retrieval_metrics.get("recall", 0.0)
     is_hit = recall > 0.0
 
-    relevancy = generation_metrics.get("answer_relevancy", 0.0)
+    relevancy = generation_metrics.get("", 0.0)
     faithfulness = generation_metrics.get("faithfulness", 0.0)
     correctness = generation_metrics.get("answer_correctness", 0.0)
 
     f_min = thresholds.get("faithfulness", 0.0)
     c_min = thresholds.get("answer_correctness", 0.0)
-    rel_min = thresholds.get("answer_relevancy", 0.0)
+    rel_min = thresholds.get("", 0.0)
 
     if not is_hit:
         if relevancy >= rel_min and faithfulness < f_min:
