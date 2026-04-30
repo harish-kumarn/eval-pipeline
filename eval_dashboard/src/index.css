@@ -1,0 +1,230 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    /* Light Theme */
+    --bg-app: #f8fafc;
+    --bg-header: #ffffff;
+    --bg-panel: #ffffff;
+    --bg-card: #f1f5f9;
+    --border-main: #e2e8f0;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --accent: #d97706;
+    --accent-muted: rgba(217, 119, 6, 0.08);
+
+    --grid-bg: #ffffff;
+    --grid-header: #f8fafc;
+    --grid-border: #e2e8f0;
+
+    --diff-up-bg: rgba(34, 197, 94, 0.12);
+    --diff-up-text: #16a34a;
+    --diff-down-bg: rgba(239, 68, 68, 0.12);
+    --diff-down-text: #dc2626;
+
+    --metric-green-bg: rgba(34, 197, 94, 0.1);
+    --metric-green-text: #15803d;
+    --metric-green-border: rgba(34, 197, 94, 0.2);
+    --metric-yellow-bg: rgba(234, 179, 8, 0.1);
+    --metric-yellow-text: #a16207;
+    --metric-yellow-border: rgba(234, 179, 8, 0.2);
+    --metric-red-bg: rgba(239, 68, 68, 0.1);
+    --metric-red-text: #b91c1c;
+    --metric-red-border: rgba(239, 68, 68, 0.2);
+    --metric-grey-bg: rgba(107, 114, 128, 0.1);
+    --metric-grey-text: #4b5563;
+    --metric-grey-border: rgba(107, 114, 128, 0.2);
+}
+
+.dark-theme {
+    --bg-app: #020617;
+    --bg-header: #020617;
+    --bg-panel: #0f172a;
+    --bg-card: #1e293b;
+    --border-main: #1e293b;
+    --text-main: #f8fafc;
+    --text-muted: #cbd5e1;
+    --accent: #f59e0b;
+    --accent-muted: rgba(245, 158, 11, 0.15);
+
+    --grid-bg: #0f172a;
+    --grid-header: #020617;
+    --grid-border: #1e293b;
+
+    --diff-up-bg: rgba(74, 222, 128, 0.15);
+    --diff-up-text: #4ade80;
+    --diff-down-bg: rgba(248, 113, 113, 0.15);
+    --diff-down-text: #f87171;
+
+    --metric-green-bg: rgba(34, 197, 94, 0.15);
+    --metric-green-text: #4ade80;
+    --metric-green-border: rgba(34, 197, 94, 0.3);
+    --metric-yellow-bg: rgba(234, 179, 8, 0.15);
+    --metric-yellow-text: #fde047;
+    --metric-yellow-border: rgba(234, 179, 8, 0.3);
+    --metric-red-bg: rgba(239, 68, 68, 0.15);
+    --metric-red-text: #f87171;
+    --metric-red-border: rgba(239, 68, 68, 0.3);
+    --metric-grey-bg: rgba(107, 114, 128, 0.15);
+    --metric-grey-text: #94a3b8;
+    --metric-grey-border: rgba(107, 114, 128, 0.3);
+}
+
+@layer base {
+    html,
+    body,
+    #root {
+        height: 100%;
+        /* overflow: hidden removed — each panel manages its own scrolling */
+    }
+
+    body {
+        background-color: var(--bg-app);
+        color: var(--text-main);
+        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        transition: background-color 0.3s ease, color 0.3s ease;
+        overflow: hidden; /* only the body clips, inner panels scroll themselves */
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    /* Thin, stylish scrollbars everywhere */
+    ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--border-main);
+        border-radius: 10px;
+        transition: background 0.2s;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-muted);
+    }
+
+    ::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+}
+
+@layer utilities {
+    /* Scrollable but hidden scrollbar for chip rows */
+    .scrollbar-none {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .scrollbar-none::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Horizontal fade-off hint on chip bar */
+    .chip-fade-right {
+        -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+        mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    }
+
+    /* Used on flex children that must shrink below their content size */
+    .min-h-0 { min-height: 0; }
+    .min-w-0 { min-width: 0; }
+}
+
+/* ── AG Grid Global Overrides ────────────────────────────────────── */
+.ag-theme-balham,
+.ag-theme-balham-dark {
+    --ag-background-color: var(--grid-bg);
+    --ag-header-background-color: var(--grid-header);
+    --ag-odd-row-background-color: var(--grid-bg);
+    --ag-border-color: var(--grid-border);
+    --ag-active-color: var(--accent);
+    --ag-foreground-color: var(--text-main);
+    --ag-secondary-foreground-color: var(--text-muted);
+    --ag-border-radius: 8px;
+    height: 100%; /* critical: grid fills its flex parent */
+}
+
+/* Prevent white flash on internal AG grid elements */
+.ag-theme-balham .ag-root-wrapper,
+.ag-theme-balham-dark .ag-root-wrapper,
+.ag-theme-balham .ag-root-wrapper-body,
+.ag-theme-balham-dark .ag-root-wrapper-body,
+.ag-theme-balham .ag-body-viewport,
+.ag-theme-balham-dark .ag-body-viewport,
+.ag-theme-balham .ag-header,
+.ag-theme-balham-dark .ag-header,
+.ag-theme-balham .ag-row,
+.ag-theme-balham-dark .ag-row,
+.ag-theme-balham .ag-pinned-left-cols-container,
+.ag-theme-balham-dark .ag-pinned-left-cols-container,
+.ag-theme-balham .ag-cell,
+.ag-theme-balham-dark .ag-cell {
+    background-color: var(--grid-bg) !important;
+    border-color: var(--grid-border) !important;
+}
+
+/* Ensure empty grid areas also match theme */
+.ag-theme-balham .ag-overlay-no-rows-wrapper,
+.ag-theme-balham-dark .ag-overlay-no-rows-wrapper,
+.ag-theme-balham .ag-overlay-loading-wrapper,
+.ag-theme-balham-dark .ag-overlay-loading-wrapper {
+    background-color: var(--bg-panel) !important;
+    color: var(--text-muted) !important;
+}
+
+.ag-root-wrapper {
+    height: 100% !important;
+}
+
+.ag-row {
+    transition: background-color 0.15s ease;
+}
+
+.ag-row-selected {
+    background-color: var(--accent-muted) !important;
+}
+
+.ag-row-selected::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: var(--accent);
+    z-index: 10;
+    box-shadow: 2px 0 8px var(--accent);
+}
+
+.ag-header-cell-text {
+    font-weight: 700 !important;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.ag-header-cell {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+}
+
+.ag-cell {
+    display: flex;
+    align-items: center;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+}
+
+.ag-header-row {
+    border-bottom: 2px solid var(--grid-border) !important;
+}

@@ -1,0 +1,30 @@
+{
+    "name": "rag-eval-dashboard",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "dev": "python3 src/server.py & SERVER_PID=$!; trap 'kill $SERVER_PID 2>/dev/null' EXIT; vite",
+        "dev:frontend": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "ag-grid-community": "^35.2.0",
+        "ag-grid-react": "^35.2.0",
+        "lucide-react": "^1.7.0",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "react-router-dom": "^7.13.2",
+        "recharts": "^3.8.1"
+    },
+    "devDependencies": {
+        "@types/react": "^18.3.1",
+        "@types/react-dom": "^18.3.1",
+        "@vitejs/plugin-react": "^4.3.4",
+        "autoprefixer": "^10.4.20",
+        "postcss": "^8.4.49",
+        "tailwindcss": "^3.4.17",
+        "vite": "^6.0.5"
+    }
+}

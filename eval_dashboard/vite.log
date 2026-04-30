@@ -1,0 +1,19 @@
+nohup: ignoring input
+
+> rag-eval-dashboard@0.1.0 dev
+> vite --port 5173
+
+
+  VITE v6.4.1  ready in 202 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.29.6:5173/
+11:45:02 AM [vite] (client) hmr update /src/components/ExperimentList.jsx, /src/index.css
+12:07:12 PM [vite] (client) hmr update /src/components/Dashboard.jsx, /src/index.css
+12:09:26 PM [vite] (client) hmr update /src/components/ExperimentTable.jsx, /src/index.css
+12:09:26 PM [vite] (client) hmr invalidate /src/components/ExperimentTable.jsx Could not Fast Refresh ("ALL_COLUMNS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+12:09:26 PM [vite] (client) hmr update /src/index.css, /src/components/Panel.jsx
+12:41:58 PM [vite] (client) hmr update /src/index.css
+12:42:57 PM [vite] (client) hmr update /src/components/Dashboard.jsx, /src/index.css
+12:44:07 PM [vite] (client) hmr update /src/components/Panel.jsx, /src/index.css
+12:44:29 PM [vite] (client) hmr update /src/components/ExperimentTable.jsx, /src/index.css
