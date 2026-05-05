@@ -1,6 +1,6 @@
 ###################################################3
 
-csv_name: token_calculation_polesaw
+csv_name: test_auger 
 
 query_reformulation: true
 use_reranking: true
@@ -12,13 +12,13 @@ use_hybrid: true
 
 target_chunks: data/target_chunks.json
 
-user_id: "1234"
+user_id: "001"
 k: 3
 chunk_format: "chunk{id}"
 
 metrics_config: null
-collection_name: pole_saw1
-VISIONRAG_URL: "http://127.0.0.1:8000/api/v1/evaluation/users/{user_id}/chat"
+collection_name: MA42_AUGER
+VISIONRAG_URL: "http://127.0.0.1:8000/api/v1/evaluation/users/{user_id}/chat_eval"
 metrics_config_path: "config/metrics_config.json"
 
 # --- Questions to evaluate (leave empty to use target_chunks.json) ---
@@ -26,9 +26,7 @@ questions: []
 
 
 # --- Backend Logging (for fetching retrieval results if API is missing markers) ---
-backend_logs_dir: "/home/krithika/Documents/LongTermMemoryAgent/vrag/eval_results"
-
-aws_s3_bucket: "vision-rag-test-bc"
+aws_s3_bucket: "vision-rag-temp-bucket"
 
 
 results_dirs:

@@ -92,7 +92,6 @@ class EvaluationOrchestrator:
 
             ### Calling the retriever
             result = await self.retriever.retrieve(q, eval_file_name=eval_file_name, is_last=is_last)
-            # result.generated_answer = self._strip_base64_images(result.generated_answer)  # TODO : check this
 
             if result.error:
                 logger.info("qid=%s: retrieval error — %s", q.qid, result.error)
@@ -313,10 +312,11 @@ class EvaluationOrchestrator:
                 generated_answers_list = json.load(f)
             # Create a lookup map
             generated_answers_map = {item["qid"]: item.get("generated_answer", "") for item in generated_answers_list}
+
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logger.error("Failed to load %s: %s", self.generated_answers_file, e)
             return
-
+ 
         # 2. Parse the CSV log for retrieved chunks
         log_data = {}
         if log_path.exists():
@@ -364,3 +364,5 @@ class EvaluationOrchestrator:
             logger.info("Successfully populated %d entries into %s", len(all_results), self.visionrag_file)
         else:
             logger.warning("No entries were constructed for visionrag result.")
+
+

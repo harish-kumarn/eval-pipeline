@@ -63,6 +63,7 @@ class VisionRAGClient:
             "query_reformulation": self.query_reformulation,
             "use_reranking": self.use_reranking,
             "use_hybrid": self.use_hybrid,
+            "memory_enabled": True
         }
 
         logger.info(

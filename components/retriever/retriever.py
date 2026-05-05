@@ -59,8 +59,6 @@ class VisionRAGRetriever:
                 eval_file_name=eval_file_name,
                 is_last=is_last,
             )
-            logger.info("✓ VisionRAG API response received")
-
             retrieved_docs = response.get("retrieved_docs", [])
             logger.info("Retrieved %d documents", len(retrieved_docs))
             logger.info("Retrieved docs: %s", retrieved_docs)
