@@ -39,6 +39,10 @@ class VisionRAGClient:
         self.query_reformulation = query_reformulation
         self.use_reranking    = use_reranking
         self.use_hybrid       = use_hybrid
+        self.vector_top_k     = CONFIG["vrag_client"].get("vector_top_k", 5)
+        self.bm25_top_k       = CONFIG["vrag_client"].get("bm25_top_k", 5)
+        self.rerank_top_k     = CONFIG["vrag_client"].get("rerank_top_k", 5)
+        self.final_top_k      = CONFIG["vrag_client"].get("final_top_k", 5)
         self._url             = CONFIG["vrag_client"]["VISIONRAG_URL"]
         self.memory_enabled   = CONFIG["vrag_client"].get("memory_enabled", True)
         self.timeout          = CONFIG["vrag_client"]["timeout"]
@@ -68,6 +72,10 @@ class VisionRAGClient:
             "query_reformulation": self.query_reformulation,
             "use_reranking":      self.use_reranking,
             "use_hybrid":         self.use_hybrid,
+            "vector_top_k":      self.vector_top_k,
+            "bm25_top_k":        self.bm25_top_k,
+            "rerank_top_k":      self.rerank_top_k,
+            "final_top_k":      self.final_top_k,
             "memory_enabled":     self.memory_enabled,
         }
 
