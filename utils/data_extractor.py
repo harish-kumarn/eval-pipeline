@@ -17,7 +17,6 @@ class DataExtractor:
 
     def load_chunks(self) -> Dict[str, Any]:
         """Load target chunks from file."""
-        logger.info("Loading target chunks from %s", self.target_chunks_file)
         self.target_chunks = FileHandler.load_json(self.target_chunks_file)
         logger.info("Loaded %d chunks from %s", len(self.target_chunks), self.target_chunks_file)
         return self.target_chunks

@@ -6,11 +6,8 @@
         "ndcg"
     ],
     "generation_metrics": [
-        "faithfulness",
-        "context_precision",
-        "answer_correctness",
-        "answer_relevancy"
-    ],
+
+    ], 
     "metric_thresholds": {
         "recall": 0.7,
         "precision": 0.7,

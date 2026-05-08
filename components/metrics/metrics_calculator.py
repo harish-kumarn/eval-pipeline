@@ -1,36 +1,32 @@
 """
+metrics_calculator.py
+---------------------
 Retrieval and generation metrics calculators for the evaluation pipeline.
 
-Generation metrics (via RAGAS): Faithfulness, Context Precision,
-Answer Correctness, Answer Relevancy.
-
-Retrieval metrics (custom): MRR, Recall, Precision, NDCG.
+Retrieval metrics (custom): MRR@k, Recall@k, Precision@k, NDCG@k.
+Generation metrics (RAGAS): Faithfulness, Context Precision,
+                             Answer Correctness, Answer Relevancy.
 """
 
 import math
-from typing import Dict, List, Any, Optional, TypeVar
+from typing import Any, Dict, List, Optional
 
-from utils.support_evals.data_models import RetrievalMetrics, GenerationMetrics
-from utils.support_evals.interfaces import IMetricsCalculator
 from components.metrics.token_tracker import TokenTracker
 from config.logger import setup_logger
+from utils.support_evals.data_models import GenerationMetrics, RetrievalMetrics
+from utils.support_evals.interfaces import IMetricsCalculator
 
 logger = setup_logger(name="eval_pipeline", tag="METRICS CALCULATOR")
 
-T = TypeVar("T")
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Shared helper
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Shared helpers ────────────────────────────────────────────────────────────
 
 def _mean(values: List[float]) -> Optional[float]:
+    """Return the arithmetic mean of *values*, or None if the list is empty."""
     return float(sum(values) / len(values)) if values else None
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Retrieval Metrics
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Retrieval Metrics ─────────────────────────────────────────────────────────
 
 class RetrievalMetricsCalculator(IMetricsCalculator):
     """Computes MRR, Recall, Precision, and NDCG for retrieval evaluation."""
@@ -52,10 +48,10 @@ class RetrievalMetricsCalculator(IMetricsCalculator):
         per_query: List[Dict[str, Any]] = []
 
         for d in data:
-            gt = d.get("ground_truth_chunk_id")
+            gt       = d.get("ground_truth_chunk_id")
             retrieved = d.get("retrieved_chunk_ids", [])
-            rels = [r == gt for r in retrieved]
-            rank = next((i + 1 for i, r in enumerate(rels[:k]) if r), None)
+            rels      = [r == gt for r in retrieved]
+            rank      = next((i + 1 for i, r in enumerate(rels[:k]) if r), None)
 
             scores = self._score_query(rank=rank, rels=rels, k=k, active=active)
 
@@ -66,42 +62,38 @@ class RetrievalMetricsCalculator(IMetricsCalculator):
                 ranks.append(rank)
 
             per_query.append({
-                "qid": d.get("qid"),
-                "query": d.get("question"),
-                "tag": d.get("tag"),
-                "rank": rank,
+                "qid":                   d.get("qid"),
+                "query":                 d.get("question"),
+                "tag":                   d.get("tag"),
+                "rank":                  rank,
                 "ground_truth_chunk_id": gt,
-                "retrieved_chunk_ids": retrieved,
+                "retrieved_chunk_ids":   retrieved,
                 **scores,
             })
 
         return RetrievalMetrics(
-            mrr_at_k=_mean(accumulators.get("mrr", [])),
-            recall_at_k=_mean(accumulators.get("recall", [])),
-            precision_at_k=_mean(accumulators.get("precision", [])),
-            ndcg_at_k=_mean(accumulators.get("ndcg", [])),
-            mean_rank=_mean(ranks),
-            k=k,
-            total_queries=len(data),
-            per_query_metrics=per_query,
+            mrr_at_k       = _mean(accumulators.get("mrr", [])),
+            recall_at_k    = _mean(accumulators.get("recall", [])),
+            precision_at_k = _mean(accumulators.get("precision", [])),
+            ndcg_at_k      = _mean(accumulators.get("ndcg", [])),
+            mean_rank      = _mean(ranks),
+            k              = k,
+            total_queries  = len(data),
+            per_query_metrics = per_query,
         )
 
     def _score_query(
         self, rank: Optional[int], rels: List[bool], k: int, active: set
     ) -> Dict[str, float]:
         scores = {}
-        if "mrr" in active:
-            scores["mrr"] = 1 / rank if rank else 0.0
-        if "recall" in active:
-            scores["recall"] = 1.0 if rank else 0.0
-        if "precision" in active:
-            scores["precision"] = sum(rels[:k]) / k
-        if "ndcg" in active:
-            scores["ndcg"] = self._ndcg(rels, k)
+        if "mrr"       in active: scores["mrr"]       = 1 / rank if rank else 0.0
+        if "recall"    in active: scores["recall"]    = 1.0 if rank else 0.0
+        if "precision" in active: scores["precision"] = sum(rels[:k]) / k
+        if "ndcg"      in active: scores["ndcg"]      = self._ndcg(rels, k)
         return scores
 
     def _ndcg(self, rels: List[bool], k: int) -> float:
-        dcg = self._dcg(rels, k)
+        dcg  = self._dcg(rels, k)
         idcg = self._dcg([True] * min(sum(rels), k), k)
         return dcg / idcg if idcg else 0.0
 
@@ -109,10 +101,9 @@ class RetrievalMetricsCalculator(IMetricsCalculator):
         return sum(1 / math.log2(i + 2) for i, r in enumerate(rels[:k]) if r)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Generation Metrics (RAGAS)
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Generation Metrics (RAGAS) ────────────────────────────────────────────────
 
+# Canonical set of generation metrics evaluated through RAGAS.
 GENERATION_METRICS = ("faithfulness", "context_precision", "answer_correctness", "answer_relevancy")
 
 
@@ -127,19 +118,22 @@ class GenerationMetricsCalculator(IMetricsCalculator):
 
     _RETRIES = 3
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._ragas_metrics = self._load_ragas_metrics()
-        from ragas import evaluate, RunConfig
-        from datasets import Dataset
-        self.evaluate = evaluate
-        self.RunConfig = RunConfig
-        self.Dataset = Dataset
 
-    # ── setup ────────────────────────────────────────────────────────────────
+        # Import heavy RAGAS dependencies once at construction time.
+        from datasets import Dataset
+        from ragas import RunConfig, evaluate
+        self.evaluate  = evaluate
+        self.RunConfig = RunConfig
+        self.Dataset   = Dataset
+
+    # ── Setup ─────────────────────────────────────────────────────────────────
 
     @staticmethod
     def _load_ragas_metrics() -> Dict[str, Any]:
-        from ragas.metrics import faithfulness, context_precision, answer_correctness
+        """Import and return RAGAS metric objects, handling version differences."""
+        from ragas.metrics import answer_correctness, context_precision, faithfulness
 
         try:
             from ragas.metrics import answer_relevancy
@@ -147,29 +141,30 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             try:
                 from ragas.metrics import answer_relevance as answer_relevancy
             except ImportError:
-                from ragas.metrics.collections import answer_relevancy
+                from ragas.metrics.collections import answer_relevancy  # type: ignore[no-redef]
 
         return {
-            "faithfulness": faithfulness,
-            "context_precision": context_precision,
+            "faithfulness":       faithfulness,
+            "context_precision":  context_precision,
             "answer_correctness": answer_correctness,
-            "answer_relevancy": answer_relevancy,
+            "answer_relevancy":   answer_relevancy,
         }
 
-    # ── validation ───────────────────────────────────────────────────────────
+    # ── Validation ────────────────────────────────────────────────────────────
 
     def _validate_samples(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filter out samples that are missing required fields."""
         valid = []
         for i, d in enumerate(data):
             qid = d.get("qid") or f"_idx_{i}"
             if not all(d.get(f, "").strip() for f in ("question", "answer", "ground_truth")):
-                logger.info("Skipping qid=%s — missing required fields", qid)
+                logger.warning("Skipping qid=%s — missing required fields (question/answer/ground_truth)", qid)
                 continue
             contexts = [c for c in d.get("contexts", []) if isinstance(c, str) and c.strip()]
             valid.append({**d, "qid": qid, "contexts": contexts})
         return valid
 
-    # ── RAGAS execution ──────────────────────────────────────────────────────
+    # ── RAGAS execution ───────────────────────────────────────────────────────
 
     def _evaluate_sample(
         self,
@@ -187,28 +182,32 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             "contexts":     [sample.get("contexts", [])],
         })
 
+        last_df = None
         for attempt in range(self._RETRIES):
             try:
-                result = self.evaluate(
+                result  = self.evaluate(
                     dataset,
-                    metrics=list(metrics.values()),
-                    llm=llm_wrapper,
-                    embeddings=embeddings_wrapper,
-                    run_config=self.RunConfig(timeout=600),
+                    metrics    = list(metrics.values()),
+                    llm        = llm_wrapper,
+                    embeddings = embeddings_wrapper,
+                    run_config = self.RunConfig(timeout=600),
                 )
-                df = result.to_pandas()
+                last_df = result.to_pandas()
                 return {
-                    m: (None if math.isnan(v := float(df[m].iloc[0])) else v)
-                    if m in df.columns else None
+                    m: (None if math.isnan(v := float(last_df[m].iloc[0])) else v)
+                    if m in last_df.columns else None
                     for m in metrics
                 }
-
             except Exception as e:
-                logger.info(
+                logger.warning(
                     "qid=%s | attempt %d/%d failed for %s: %s",
                     sample.get("qid"), attempt + 1, self._RETRIES, list(metrics.keys()), e,
                 )
-        logger.info("Raw RAGAS df for qid=%s:\n%s", sample.get("qid"), df.to_string())
+
+        # All retries exhausted — log the last successful DataFrame if available.
+        if last_df is not None:
+            logger.warning("Raw RAGAS df for qid=%s:\n%s", sample.get("qid"), last_df.to_string())
+
         return {m: None for m in metrics}
 
     def _run_metric_group(
@@ -220,7 +219,7 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         llm_wrapper,
         embeddings_wrapper,
         label: str,
-        tracker=None,
+        tracker: Optional[TokenTracker] = None,
     ) -> None:
         logger.info("Evaluating [%s] across %d samples", label, len(samples))
 
@@ -242,14 +241,10 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                     .get("per_metric", {}).get(label, {})
                     .get("total_tokens", 0)
                 )
-                logger.info(
-                    "qid=%s scores=%s tokens=%d",
-                    qid,
-                    {m: f"{v:.3f}" if v is not None else "None" for m, v in scores.items()},
-                    token_count,
-                )
+                score_display = {m: f"{v:.3f}" if v is not None else "None" for m, v in scores.items()}
+                logger.info("qid=%s scores=%s tokens=%d", qid, score_display, token_count)
 
-    # ── metric group definitions ─────────────────────────────────────────────
+    # ── Metric group definitions ──────────────────────────────────────────────
 
     def _build_metric_groups(
         self,
@@ -257,16 +252,16 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         requested: Optional[set],
     ) -> List[Dict[str, Any]]:
         """
-        Returns a list of metric groups, each specifying which RAGAS metrics
-        to run, the ground truth field to use, and the eligible samples.
+        Return a list of metric groups, each specifying which RAGAS metrics
+        to run, the ground-truth field to use, and the eligible samples.
 
         Groups:
-          1. faithfulness + context_precision  → need non-empty contexts
-          2. answer_correctness               → needs answer_extract field
-          3. answer_relevancy                 → needs a non-empty answer
+          1. faithfulness + context_precision  → requires non-empty contexts.
+          2. answer_correctness               → requires a non-empty answer_extract.
+          3. answer_relevancy                 → requires a non-empty answer.
         """
         all_metrics = requested or set(GENERATION_METRICS)
-        groups = []
+        groups: List[Dict[str, Any]] = []
 
         # Group 1: context-dependent metrics
         context_metrics = {
@@ -284,7 +279,7 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                     "label":    "faithfulness+context_precision",
                 })
 
-        # Group 2: answer correctness
+        # Group 2: answer correctness (uses answer_extract as ground truth)
         if "answer_correctness" in all_metrics:
             ac_samples = [d for d in valid if d.get("answer_extract", "").strip()]
             if ac_samples:
@@ -308,7 +303,7 @@ class GenerationMetricsCalculator(IMetricsCalculator):
 
         return groups
 
-    # ── public API ───────────────────────────────────────────────────────────
+    # ── Public API ────────────────────────────────────────────────────────────
 
     def compute(
         self,
@@ -316,14 +311,14 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         llm_wrapper=None,
         embeddings_wrapper=None,
         requested_metrics: Optional[List[str]] = None,
-        tracker=None,
+        tracker: Optional[TokenTracker] = None,
     ) -> Optional[GenerationMetrics]:
         if not llm_wrapper or not embeddings_wrapper:
             raise RuntimeError("RAGAS requires llm_wrapper and embeddings_wrapper")
 
         valid = self._validate_samples(data)
         if not valid:
-            logger.info("No valid samples to evaluate.")
+            logger.warning("No valid samples to evaluate — all samples were filtered out.")
             return None
 
         requested = set(requested_metrics) if requested_metrics else None
@@ -333,17 +328,19 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             if tracker:
                 tracker.clear_context()
             self._run_metric_group(
-                samples=group["samples"],
-                metrics=group["metrics"],
-                gt_field=group["gt_field"],
-                results_by_qid=results_by_qid,
-                llm_wrapper=llm_wrapper,
-                embeddings_wrapper=embeddings_wrapper,
-                label=group["label"],
-                tracker=tracker,
+                samples        = group["samples"],
+                metrics        = group["metrics"],
+                gt_field       = group["gt_field"],
+                results_by_qid = results_by_qid,
+                llm_wrapper    = llm_wrapper,
+                embeddings_wrapper = embeddings_wrapper,
+                label          = group["label"],
+                tracker        = tracker,
             )
 
         return self._aggregate(valid, results_by_qid)
+
+    # ── Aggregation ───────────────────────────────────────────────────────────
 
     def _aggregate(
         self,
@@ -354,12 +351,12 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         per_query: List[Dict[str, Any]] = []
 
         for d in valid:
-            qid = d["qid"]
+            qid    = d["qid"]
             scores = results_by_qid[qid]
+            entry  = {"qid": qid, "query": d.get("question", ""), "tag": d.get("tag", "")}
 
-            entry = {"qid": qid, "query": d.get("question", ""), "tag": d.get("tag", "")}
             for m in GENERATION_METRICS:
-                score = scores.get(m)
+                score    = scores.get(m)
                 entry[m] = score
                 if isinstance(score, float):
                     accumulators[m].append(score)
@@ -367,9 +364,9 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             per_query.append(entry)
 
         return GenerationMetrics(
-            faithfulness=_mean(accumulators["faithfulness"]),
-            context_precision=_mean(accumulators["context_precision"]),
-            answer_correctness=_mean(accumulators["answer_correctness"]),
-            answer_relevancy=_mean(accumulators["answer_relevancy"]),
-            per_query_metrics=per_query,
+            faithfulness       = _mean(accumulators["faithfulness"]),
+            context_precision  = _mean(accumulators["context_precision"]),
+            answer_correctness = _mean(accumulators["answer_correctness"]),
+            answer_relevancy   = _mean(accumulators["answer_relevancy"]),
+            per_query_metrics  = per_query,
         )

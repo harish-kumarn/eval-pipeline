@@ -1,76 +1,132 @@
+"""
+metric_exporter.py
+------------------
+Exports per-question evaluation metrics to CSV and SQLite.
+
+Public API:
+  - export_all_metrics(...)  → runs both CSV and DB exports in one call (shared data load).
+  - export_to_csv(...)       → standalone CSV export.
+  - export_to_db(...)        → standalone SQLite export.
+"""
+
+import pandas as pd
+import ast
 import csv
 import json
+import re
 import sqlite3
 import statistics
-import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from config.logger import setup_logger
 
 logger = setup_logger(name="eval_pipeline", tag="EXPORT METRICS")
 
+
+# ── Module-level constants ────────────────────────────────────────────────────
+
 _UNSAFE_CHARS = re.compile(r"[^\w\-]")
 
+# Columns written to both the results table and the per-query metrics.
+METRIC_COLS: Tuple[str, ...] = (
+    "mrr", "recall", "precision", "ndcg",
+    "faithfulness", "context_precision", "answer_correctness", "answer_relevancy",
+)
 
-# ── Helpers ────────────────────────────────────────────────────────────────
+# Full ordered column list for the SQLite results table.
+ALL_COLS: Tuple[str, ...] = (
+    "timestamp", "query", "type", "top_k",
+    "reformulated_query", "vector_chunk_ids", "bm25_chunk_ids",
+    "pre_rerank_chunk_ids", "post_rerank_chunk_ids",
+    "final_retrieved_chunks", "actual_chunk",
+    *METRIC_COLS,
+)
 
-def _safe_name(name: str) -> str:
+
+# ── Private helpers ───────────────────────────────────────────────────────────
+
+def _safe_table_name(name: str) -> str:
+    """Sanitise *name* for use as an SQLite table name."""
     stem = Path(name).stem
     return _UNSAFE_CHARS.sub("_", stem.strip()).lower() or "eval_results"
 
 
-def _load_visionrag_lookup(path: str | Path) -> Dict[str, Dict[str, Any]]:
-    path = Path(path)
+def _get_alias(row: Dict[str, Any], *keys: str) -> str:
+    """Return the first non-None value found among *keys* in *row*, or ''."""
+    for key in keys:
+        value = row.get(key)
+        if value is not None:
+            return value
+    return ""
+
+
+def _normalise_chunks(raw, top_k: int) -> str:
+    """
+    Coerce *raw* (list or string) to a string representation capped at *top_k* items.
+    Handles pipe-separated strings and Python list literals.
+    """
+    if isinstance(raw, list):
+        return str(raw[:top_k])
+
+    if isinstance(raw, str):
+        if "|" in raw:
+            parts = [c.strip() for c in raw.split("|") if c.strip()]
+            return str(parts[:top_k])
+        try:
+            parsed = ast.literal_eval(raw)
+            if isinstance(parsed, list):
+                return str(parsed[:top_k])
+        except (ValueError, SyntaxError):
+            pass
+
+    return str(raw) if raw else ""
+
+
+def _load_visionrag_lookup(path: Path) -> Dict[str, Dict[str, Any]]:
+    """Load visionragresult.json and return a qid-keyed lookup dict."""
     if not path.exists():
         logger.warning("visionragresult not found: %s", path)
         return {}
-
     try:
         entries = json.loads(path.read_text(encoding="utf-8"))
         return {
             e["qid"]: {
                 "ground_truth_chunk_id": e.get("ground_truth_chunk_id", ""),
-                "retrieved_chunk_ids": e.get("retrieved_chunk_ids", []),
-                "generated_answer": e.get("generated_answer", ""),
+                "retrieved_chunk_ids":   e.get("retrieved_chunk_ids", []),
+                "generated_answer":      e.get("generated_answer", ""),
             }
             for e in entries if "qid" in e
         }
     except Exception as exc:
-        logger.warning("Failed to load visionrag lookup: %s", exc)
+        logger.warning("Failed to load visionrag lookup from %s: %s", path, exc)
         return {}
 
 
 def _load_csv_log(path: Optional[Path]) -> Dict[str, Dict[str, Any]]:
+    """
+    Load the VisionRAG client CSV log and return a query-text-keyed lookup dict.
+    Handles column-name aliases used by different backend versions.
+    """
     if not path or not path.exists():
         logger.warning("CSV log not found: %s", path)
         return {}
 
-    data = {}
+    data: Dict[str, Dict[str, Any]] = {}
     try:
         with open(path, encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            # Use columns found in the file
-            for row in reader:
-                q = (row.get("query") or row.get("question") or "").strip()
-                if not q:
+            for row in csv.DictReader(f):
+                query = (row.get("query") or row.get("question") or "").strip()
+                if not query:
                     continue
-                
-                # Try multiple aliases for each field
-                def _get_alias(keys):
-                    for k in keys:
-                        v = row.get(k)
-                        if v is not None: return v
-                    return ""
-
-                data[q] = {
-                    "reformulated_query": _get_alias(["reformulated_query", "reformulated_question"]),
-                    "vector_chunk_ids": _get_alias(["vector_chunk_ids", "vector_search"]),
-                    "bm25_chunk_ids": _get_alias(["bm25_chunk_ids", "bm25"]),
-                    "pre_rerank_chunk_ids": _get_alias(["pre_rerank_chunk_ids", "before_rr"]),
-                    "post_rerank_chunk_ids": _get_alias(["post_rerank_chunk_ids", "after_rr"]),
-                    "final_retrieved_chunks": _get_alias(["final_retrieved_chunks", "retrieved"]),
+                data[query] = {
+                    "reformulated_query":    _get_alias(row, "reformulated_query", "reformulated_question"),
+                    "vector_chunk_ids":      _get_alias(row, "vector_chunk_ids", "vector_search"),
+                    "bm25_chunk_ids":        _get_alias(row, "bm25_chunk_ids", "bm25"),
+                    "pre_rerank_chunk_ids":  _get_alias(row, "pre_rerank_chunk_ids", "before_rr"),
+                    "post_rerank_chunk_ids": _get_alias(row, "post_rerank_chunk_ids", "after_rr"),
+                    "final_retrieved_chunks": _get_alias(row, "final_retrieved_chunks", "retrieved"),
                 }
     except Exception as e:
         logger.error("Error reading CSV log %s: %s", path, e)
@@ -78,101 +134,66 @@ def _load_csv_log(path: Optional[Path]) -> Dict[str, Dict[str, Any]]:
     return data
 
 
-def build_rows(
+def _build_rows(
     retrieval: List[Dict[str, Any]],
     generation: List[Dict[str, Any]],
     top_k: int,
     visionrag: Dict[str, Dict[str, Any]],
     csv_log: Dict[str, Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-
+    """Merge retrieval, generation, visionrag, and log data into flat export rows."""
     gen_map = {g["qid"]: g for g in generation}
-    rows = []
+    rows    = []
 
-    for i, r in enumerate(retrieval, 1):
+    for r in retrieval:
         qid = r.get("qid", "")
-        q = (r.get("query") or "").strip()
+        q   = (r.get("query") or "").strip()
 
-        g = gen_map.get(qid, {})
+        g  = gen_map.get(qid, {})
         vr = visionrag.get(qid, {})
         cl = csv_log.get(q, {})
 
-        retrieved_chunks = (
-            cl.get("retrieved")
+        raw_chunks = (
+            cl.get("final_retrieved_chunks")
             or vr.get("retrieved_chunk_ids")
             or r.get("retrieved_chunk_ids", [])
         )
 
-        if isinstance(retrieved_chunks, list):
-            retrieved_chunks = str(retrieved_chunks[:top_k])
-        elif isinstance(retrieved_chunks, str):
-            if "|" in retrieved_chunks:
-                rc_list = [c.strip() for c in retrieved_chunks.split("|") if c.strip()]
-                retrieved_chunks = str(rc_list[:top_k])
-            else:
-                import ast
-                try:
-                    rc_list = ast.literal_eval(retrieved_chunks)
-                    if isinstance(rc_list, list):
-                        retrieved_chunks = str(rc_list[:top_k])
-                except Exception:
-                    pass
-
         rows.append({
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "query": q,
-            "reformulated_query": cl.get("reformulated_query") or q,
-            "vector_chunk_ids": cl.get("vector_chunk_ids", ""),
-            "bm25_chunk_ids": cl.get("bm25_chunk_ids", ""),
-            "pre_rerank_chunk_ids": cl.get("pre_rerank_chunk_ids", ""),
+            "timestamp":             datetime.now().strftime("%H:%M:%S"),
+            "query":                 q,
+            "reformulated_query":    cl.get("reformulated_query") or q,
+            "vector_chunk_ids":      cl.get("vector_chunk_ids", ""),
+            "bm25_chunk_ids":        cl.get("bm25_chunk_ids", ""),
+            "pre_rerank_chunk_ids":  cl.get("pre_rerank_chunk_ids", ""),
             "post_rerank_chunk_ids": cl.get("post_rerank_chunk_ids", ""),
-            "final_retrieved_chunks": retrieved_chunks,
-            "generated_answer": vr.get("generated_answer") or g.get("answer") or r.get("generated_answer", ""),
-
-            "qid": qid,
-            "type": r.get("tag", ""),
-            "top_k": top_k,
-            "actual_chunk": vr.get("ground_truth_chunk_id") or r.get("ground_truth_chunk_id", ""),
-
-            "mrr": r.get("mrr"),
-            "recall": r.get("recall"),
-            "precision": r.get("precision"),
-            "ndcg": r.get("ndcg"),
-
-            "faithfulness": g.get("faithfulness"),
-            "context_precision": g.get("context_precision"),
-            "answer_correctness": g.get("answer_correctness"),
-            "answer_relevancy": g.get("answer_relevancy"),
+            "final_retrieved_chunks": _normalise_chunks(raw_chunks, top_k),
+            "generated_answer":      vr.get("generated_answer") or g.get("answer") or r.get("generated_answer", ""),
+            "qid":                   qid,
+            "type":                  r.get("tag", ""),
+            "top_k":                 top_k,
+            "actual_chunk":          vr.get("ground_truth_chunk_id") or r.get("ground_truth_chunk_id", ""),
+            # Retrieval metrics
+            "mrr":                   r.get("mrr"),
+            "recall":                r.get("recall"),
+            "precision":             r.get("precision"),
+            "ndcg":                  r.get("ndcg"),
+            # Generation metrics
+            "faithfulness":          g.get("faithfulness"),
+            "context_precision":     g.get("context_precision"),
+            "answer_correctness":    g.get("answer_correctness"),
+            "answer_relevancy":      g.get("answer_relevancy"),
         })
 
     return rows
 
 
-# ── Exporters ───────────────────────────────────────────────────────────────
+# ── Internal export helpers ───────────────────────────────────────────────────
 
-def export_to_csv(
-    retrieval: List[Dict[str, Any]],
-    generation: List[Dict[str, Any]],
-    output_dir: str | Path,
-    visionrag_path: str | Path,
-    top_k: int,
-    log_path: Optional[Path] = None,
-    csv_filename: Optional[str] = None,
-) -> Path:
-    """Prepare and export metrics to a CSV file."""
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    visionrag = _load_visionrag_lookup(visionrag_path)
-    csv_log = _load_csv_log(log_path)
-    rows = build_rows(retrieval, generation, top_k, visionrag, csv_log)
-
-    if not csv_filename:
-        csv_filename = "evaluation_results.csv"
-    
-    csv_path = output_dir / csv_filename
-    
+def _write_csv(rows: List[Dict[str, Any]], csv_path: Path) -> Path:
+    """Write *rows* to *csv_path* and return the path."""
     if not rows:
+        logger.warning("No rows to write — CSV will be empty: %s", csv_path)
         return csv_path
 
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
@@ -180,55 +201,28 @@ def export_to_csv(
         writer.writeheader()
         writer.writerows(rows)
 
-    logger.info("CSV saved → %s", csv_path)
+    logger.info("CSV saved → %s (%d rows)", csv_path, len(rows))
     return csv_path
 
 
-def export_to_db(
-    retrieval: List[Dict[str, Any]],
-    generation: List[Dict[str, Any]],
-    output_dir: str | Path,
-    visionrag_path: str | Path,
-    top_k: int,
-    hybrid_search: bool = True,
-    query_reformulation: bool = False,
-    reranking: bool = False,
-    log_path: Optional[Path] = None,
-    table_name: Optional[str] = None,
-    db_filename: str = "metrics.db",
-    final_csv_name: Optional[str] = None,
+def _write_db(
+    rows: List[Dict[str, Any]],
+    db_path: Path,
+    table: str,
+    hybrid_search: bool,
+    query_reformulation: bool,
+    reranking: bool,
+    final_csv_name: Optional[str],
 ) -> Path:
-    """Prepare and export metrics to an SQLite database."""
+    """Upsert *rows* into the SQLite database at *db_path* and return the path."""
 
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    db_path = output_dir / db_filename
-
-    visionrag = _load_visionrag_lookup(visionrag_path)
-    csv_log   = _load_csv_log(log_path)
-    rows      = build_rows(retrieval, generation, top_k, visionrag, csv_log)
-    table     = _safe_name(table_name or "evaluation_results")
-
-    METRIC_COLS = [
-        "mrr", "recall", "precision", "ndcg",
-        "faithfulness", "context_precision", "answer_correctness", "answer_relevancy",
-    ]
-
-    ALL_COLS = [
-        "timestamp", "query", "type", "top_k",
-        "reformulated_query", "vector_chunk_ids", "bm25_chunk_ids",
-        "pre_rerank_chunk_ids", "post_rerank_chunk_ids",
-        "final_retrieved_chunks", "actual_chunk",
-        *METRIC_COLS,
-    ]
-
-    def avg(key: str) -> Optional[float]:
+    def _avg(key: str) -> Optional[float]:
         vals = [r[key] for r in rows if r.get(key) is not None]
         return round(statistics.mean(vals), 6) if vals else None
 
     with sqlite3.connect(db_path) as conn:
 
-        # ── Main results table ───────────────────────────────────────────────
+        # Results table
         conn.execute(f"""
             CREATE TABLE IF NOT EXISTS "{table}" (
                 id                     INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -253,14 +247,13 @@ def export_to_db(
                 answer_relevancy       REAL
             )
         """)
-
         conn.executemany(
             f'INSERT INTO "{table}" ({", ".join(ALL_COLS)}) '
             f'VALUES ({", ".join(["?"] * len(ALL_COLS))})',
             [tuple(r.get(c) for c in ALL_COLS) for r in rows],
         )
 
-        # ── Index table ──────────────────────────────────────────────────────
+        # Run index table (one row per evaluation run)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS "index" (
                 table_name                  TEXT PRIMARY KEY,
@@ -279,7 +272,6 @@ def export_to_db(
                 answer_relevancy_average    REAL
             )
         """)
-
         conn.execute("""
             INSERT INTO "index" (
                 table_name, timestamp, final_csv_name,
@@ -309,10 +301,173 @@ def export_to_db(
             int(hybrid_search),
             int(query_reformulation),
             int(reranking),
-            avg("mrr"), avg("recall"), avg("precision"), avg("ndcg"),
-            avg("faithfulness"), avg("context_precision"),
-            avg("answer_correctness"), avg("answer_relevancy"),
+            _avg("mrr"), _avg("recall"), _avg("precision"), _avg("ndcg"),
+            _avg("faithfulness"), _avg("context_precision"),
+            _avg("answer_correctness"), _avg("answer_relevancy"),
         ))
 
-    logger.info("DB saved → %s", db_path)
+    logger.info("DB saved → %s (table=%s)", db_path, table)
     return db_path
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def export_all_metrics(
+    run_output_dir: Path,
+    visionrag_path: Path,
+    retrieval_path: Path,
+    generation_path: Path,
+    vrag_client_csv: Path,
+    top_k: int,
+    csv_filename: str,
+    table_name: str,
+    hybrid_search: bool,
+    query_reformulation: bool,
+    reranking: bool,
+    db_filename: str = "../../eval_dashboard/metrics.db",
+) -> Tuple[Path, Path]:
+    """
+    Load results once and export to both CSV and SQLite.
+
+    Returns:
+        (csv_path, db_path)
+    """
+    # Load per-query metric lists from JSON outputs.
+    retrieval_pq: List[Dict] = []
+    generation_pq: List[Dict] = []
+
+    if retrieval_path.exists():
+        retrieval_pq = (json.loads(retrieval_path.read_text(encoding="utf-8")) or {}).get("per_query_metrics", [])
+
+    if generation_path.exists():
+        generation_pq = (json.loads(generation_path.read_text(encoding="utf-8")) or {}).get("per_query_metrics", [])
+
+    # Load shared lookup data once — reused by both exports.
+    visionrag = _load_visionrag_lookup(visionrag_path)
+    csv_log   = _load_csv_log(vrag_client_csv)
+    rows      = _build_rows(retrieval_pq, generation_pq, top_k, visionrag, csv_log)
+
+    # CSV export
+    run_output_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = _write_csv(rows, run_output_dir / csv_filename)
+
+    remove_columns_from_csv(
+        csv_path=csv_path,
+        columns_to_remove=["generated_answer","faithfulness", "context_precision", "answer_correctness", "answer_relevancy"],
+    )
+
+
+    # DB export
+    db_path = None
+    # db_path = Path(run_output_dir) / db_filename
+    # db_path.parent.mkdir(parents=True, exist_ok=True)
+    # _write_db(
+    #     rows             = rows,
+    #     db_path          = db_path,
+    #     table            = _safe_table_name(table_name),
+    #     hybrid_search    = hybrid_search,
+    #     query_reformulation = query_reformulation,
+    #     reranking        = reranking,
+    #     final_csv_name   = csv_path.name,
+    # )
+
+    return csv_path, db_path
+
+
+def export_to_csv(
+    retrieval: List[Dict[str, Any]],
+    generation: List[Dict[str, Any]],
+    output_dir: Path,
+    visionrag_path: Path,
+    top_k: int,
+    log_path: Optional[Path] = None,
+    csv_filename: Optional[str] = None,
+) -> Path:
+    """Standalone CSV export (loads its own data — use export_all_metrics to avoid double I/O)."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    rows     = _build_rows(retrieval, generation, top_k, _load_visionrag_lookup(visionrag_path), _load_csv_log(log_path))
+    csv_path = output_dir / (csv_filename or "evaluation_results.csv")
+    return _write_csv(rows, csv_path)
+
+
+def export_to_db(
+    retrieval: List[Dict[str, Any]],
+    generation: List[Dict[str, Any]],
+    output_dir: Path,
+    visionrag_path: Path,
+    top_k: int,
+    hybrid_search: bool = True,
+    query_reformulation: bool = False,
+    reranking: bool = False,
+    log_path: Optional[Path] = None,
+    table_name: Optional[str] = None,
+    db_filename: str = "metrics.db",
+    final_csv_name: Optional[str] = None,
+) -> Path:
+    """Standalone SQLite export (loads its own data — use export_all_metrics to avoid double I/O)."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    rows    = _build_rows(retrieval, generation, top_k, _load_visionrag_lookup(visionrag_path), _load_csv_log(log_path))
+    db_path = output_dir / db_filename
+    return _write_db(
+        rows             = rows,
+        db_path          = db_path,
+        table            = _safe_table_name(table_name or "evaluation_results"),
+        hybrid_search    = hybrid_search,
+        query_reformulation = query_reformulation,
+        reranking        = reranking,
+        final_csv_name   = final_csv_name,
+    )
+
+
+
+# ── Utils ────────────────────────────────────────────────────────────────
+
+
+def remove_columns_from_csv(
+    csv_path: str,
+    columns_to_remove: Optional[List[str]] = None,
+    output_path: Optional[str] = None,
+) -> str:
+    """
+    Remove specified columns from a CSV file.
+
+    Args:
+        csv_path: Path to input CSV file.
+        columns_to_remove: List of column names to remove.
+                           If None or empty, file is unchanged.
+        output_path: Optional output CSV path.
+                     If not provided, original file is overwritten.
+
+    Returns:
+        Path to the saved CSV file.
+    """
+
+    # Read CSV
+    df = pd.read_csv(csv_path)
+
+    # Skip if list is empty or None
+    if columns_to_remove:
+
+        # Keep only existing columns
+        existing_columns = [
+            col for col in columns_to_remove
+            if col in df.columns
+        ]
+
+        # Drop columns
+        if existing_columns:
+            df = df.drop(columns=existing_columns)
+
+    # Save output
+    save_path = output_path or csv_path
+    df.to_csv(save_path, index=False)
+
+    return save_path
+
+
+
+

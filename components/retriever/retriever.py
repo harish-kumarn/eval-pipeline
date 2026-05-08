@@ -1,95 +1,108 @@
-"""VisionRAG retriever: queries the VisionRAG API and returns structured results."""
+"""
+retriever.py
+------------
+VisionRAG retriever: queries the VisionRAG API and returns structured results.
+"""
 
 import random
-from utils.support_evals.data_models import Question, RetrievalResult
-from .vrag_client import VisionRAGClient
-from utils.data_extractor import ChunkMetadataExtractor
-from typing import Dict, Optional
+import requests
+from typing import Optional
+
+from openai import base_url
+
 from config.config_loader import load_config
 from config.logger import setup_logger
+from utils.data_extractor import ChunkMetadataExtractor
+from utils.support_evals.data_models import Question, RetrievalResult
+from .vrag_client import VisionRAGClient
 
 logger = setup_logger(name="eval_pipeline", tag="RETRIEVER")
-
 CONFIG = load_config("config/config.yml")
 
 
 class VisionRAGRetriever:
-    """Retriever implementation that queries the VisionRAG API."""
+    """Retriever that queries the VisionRAG API and returns structured results."""
 
     def __init__(
         self,
-        user_id: str = CONFIG["user_id"],
-        chunk_format: str = CONFIG["chunk_format"],
-        collection_name: str = CONFIG["collection_name"],
-        query_reformulation: bool = CONFIG["query_reformulation"],
-        use_reranking: bool = CONFIG["use_reranking"],
-        use_hybrid: bool = CONFIG["use_hybrid"],
-    ):
-        logger.info(
-            "Initializing VisionRAGRetriever (user_id=%s, timeout=%ds, "
-            "chunk_format=%s, collection=%s)",
-            user_id, CONFIG["vrag_client"]["timeout"], chunk_format, collection_name,
-        )
-        self.user_id      = user_id
-        self.chunk_format = chunk_format
-        self.client       = VisionRAGClient(
-            collection_name=collection_name,
-            query_reformulation=query_reformulation,
-            use_reranking=use_reranking,
-            use_hybrid=use_hybrid,
-        )
-        # Generate a unique thread ID for this run instance
-        self.run_thread_id = f"{random.randint(100000, 999999)}_{self.user_id}_eval"
-        logger.info("✓ VisionRAGRetriever initialized with run_thread_id: %s", self.run_thread_id)
+        user_id: Optional[str] = None,
+        collection_name: Optional[str] = None,
+        query_reformulation: Optional[bool] = None,
+        use_reranking: Optional[bool] = None,
+        use_hybrid: Optional[bool] = None,
+        chunk_format: Optional[str] = None, 
+    ) -> None:
+        # Resolve all values from config when not explicitly provided.
+        self.user_id      = user_id      or CONFIG["vrag_retriever"]["user_id"]
+        self.collection_name  = collection_name  or CONFIG["vrag_retriever"]["collection_name"]
+        self.chunk_format = chunk_format or CONFIG["vrag_retriever"]["chunk_format"]
 
-    async def retrieve(self, question: Question, eval_file_name: Optional[str] = None, is_last: bool = False) -> RetrievalResult:
-        """Query VisionRAG and return a structured RetrievalResult."""
-        logger.info("retrieve() called for question %s: %s…", question.qid, question.text[:60])
+        self.client = VisionRAGClient(
+            query_reformulation = query_reformulation if query_reformulation is not None else CONFIG["vrag_retriever"]["query_reformulation"],
+            use_reranking    = use_reranking    if use_reranking    is not None else CONFIG["vrag_retriever"]["use_reranking"],
+            use_hybrid       = use_hybrid       if use_hybrid       is not None else CONFIG["vrag_retriever"]["use_hybrid"],
+        )
+
+        # Unique thread ID scoped to this retriever instance / evaluation run.
+        self.run_thread_id = f"{random.randint(100_000, 999_999)}_{self.user_id}_eval"
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    async def retrieve(
+        self,
+        question: Question,
+        eval_file_name: Optional[str] = None,
+        is_last: bool = False,
+    ) -> RetrievalResult:
+        """Query VisionRAG for *question* and return a structured RetrievalResult."""
+        logger.info("retrieve() — qid=%s: %.60s…", question.qid, question.text)
+
         try:
-            logger.info(
-                "Querying VisionRAG API (user_id=%s, thread_id=%s, eval_file_name=%s, is_last=%s)",
-                self.user_id, self.run_thread_id, eval_file_name, is_last,
-            )
 
-            ### Calling the vrag client
             response = await self.client.query(
-                user_id=self.user_id,
-                question=question.text,
-                thread_id=self.run_thread_id,
-                eval_file_name=eval_file_name,
-                is_last=is_last,
+                user_id       = self.user_id,
+                question      = question.text,
+                thread_id     = self.run_thread_id,
+                eval_file_name= eval_file_name,
+                is_last       = is_last,
             )
-            retrieved_docs = response.get("retrieved_docs", [])
-            logger.info("Retrieved %d documents", len(retrieved_docs))
-            logger.info("Retrieved docs: %s", retrieved_docs)
-
-            retrieved_chunk_ids = ChunkMetadataExtractor.extract_chunk_ids(
-                retrieved_docs,
-                chunk_format=self.chunk_format,
-            )
-
-            answer_text = response.get("answer", "")
-
-            result = RetrievalResult(
-                qid=question.qid,
-                question=question.text,
-                ground_truth_chunk=question.chunk_id,
-                retrieved_chunks=[c for c in retrieved_chunk_ids if c],
-                retrieved_docs=retrieved_docs,
-                generated_answer=answer_text,
-            )
-            logger.info("✓ RetrievalResult created for %s", question.qid)
-            return result
+            return response 
 
         except Exception as e:
-            logger.error("✗ Error retrieving for question %s: %s", question.qid, e, exc_info=True)
-            return RetrievalResult(
-                qid=question.qid,
-                question=question.text,
-                ground_truth_chunk=question.chunk_id,
-                error=str(e),
-            )
+            logger.error("✗ Error retrieving qid=%s: %s", question.qid, e, exc_info=True)
 
 
+    def reinitialize_chat(self):
+        """
+        Calls the reinit chat API for a given user and document.
+        """
+        base_url = "http://localhost:8000/api/v1"
+        url = f"{base_url}/users/{self.user_id}/chat/reinit"
+
+        # query params
+        params = {
+            "doc_id": self.collection_name
+        }
+
+        try:
+            response = requests.post(url, params=params)
+
+            # Raise exception for bad status codes
+            response.raise_for_status()
+            logger.info(f"Chat reinitialized: {response.json()}")
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            return {
+                "status": "error",
+                "message": f"HTTP error occurred: {http_err}",
+                "response": response.text
+            }
+
+        except Exception as err:
+            return {
+                "status": "error",
+                "message": f"Other error occurred: {err}"
+            }
 
 
