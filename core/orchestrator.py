@@ -123,7 +123,7 @@ class EvaluationOrchestrator:
 
         retrieval_metrics = self.retrieval_calculator.compute(
             retrieval_results,
-            k                 = CONFIG["k"],
+            k                 = CONFIG["vrag_client"]["final_top_k"],
             requested_metrics = retrieval_req,
         )
         logger.info(
@@ -222,7 +222,7 @@ class EvaluationOrchestrator:
         empty_context_count = 0
 
         for d in retrieval_results:
-            retrieved_cids = d.get("retrieved_chunk_ids", [])[:CONFIG["k"]]
+            retrieved_cids = d.get("retrieved_chunk_ids", [])[:CONFIG["vrag_client"]["final_top_k"]]
             contexts: List[str] = []
 
             for cid in retrieved_cids:

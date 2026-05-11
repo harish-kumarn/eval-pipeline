@@ -41,10 +41,10 @@ def main() -> None:
     try:
         ### Load Config
         config_path = "config/config.yml"
-        config = load_config(config_path)
+        CONFIG = load_config(config_path)
  
         ### Setup Run Environment
-        paths = setup_run_environment(config, logger)
+        paths = setup_run_environment(CONFIG, logger)
         run_output_dir = paths["run_output_dir"]
         eval_file_name = paths["eval_file_name"]
         visionrag_path = paths["visionrag_path"]
@@ -55,10 +55,10 @@ def main() -> None:
         
         ### Run the pipeline
         asyncio.run(orchestrator.run(eval_file_name=eval_file_name))
-        
-        if config.get("aws_s3_bucket"):
+
+        if CONFIG.get("aws_s3_bucket"):
             FileHandler.download_eval_file_from_s3(
-                s3_bucket=config["aws_s3_bucket"],
+                s3_bucket=CONFIG["aws_s3_bucket"],
                 eval_file_name=eval_file_name,
                 local_dir=run_output_dir
             )
@@ -76,16 +76,17 @@ def main() -> None:
             retrieval_path=paths["retrieval_path"],
             generation_path=paths["generation_path"],
             vrag_client_csv=vrag_client_csv,
-            top_k=config.get("k"),
+            top_k=CONFIG["vrag_client"]["final_top_k"],
             csv_filename=paths["csv_filename"],
             table_name=eval_file_name,
-            hybrid_search=config.get("use_hybrid", False),
-            query_reformulation=config.get("query_reformulation", False),
-            reranking=config.get("use_reranking", False),
+            hybrid_search=CONFIG.get("use_hybrid", False),
+            query_reformulation=CONFIG.get("query_reformulation", False),
+            reranking=CONFIG.get("use_reranking", False),
             db_filename="../../eval_dashboard/metrics.db",
         )
-        logger.info("📊 Per-question CSV → %s (final_csv_name=%s)", csv_out, csv_out.name)
-        logger.info("🗄️  Per-question DB  → %s", db_out)
+
+        logger.info(f"📊 Per-question CSV → {csv_out} (final_csv_name={csv_out.name})")
+        logger.info(f"🗄️  Per-question DB  → {db_out}")
 
         logger.info("✅ Pipeline and Analysis completed successfully")
     

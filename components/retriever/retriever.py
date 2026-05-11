@@ -55,7 +55,7 @@ class VisionRAGRetriever:
         is_last: bool = False,
     ) -> RetrievalResult:
         """Query VisionRAG for *question* and return a structured RetrievalResult."""
-        logger.info("retrieve() — qid=%s: %.60s…", question.qid, question.text)
+        logger.info("qid=%s: %.60s…", question.qid, question.text)
 
         try:
 
@@ -84,6 +84,7 @@ class VisionRAGRetriever:
             "doc_id": self.collection_name
         }
 
+        ### Before calling the reinit chat API tag user with doc in localhost 8000
         try:
             response = requests.post(url, params=params)
 

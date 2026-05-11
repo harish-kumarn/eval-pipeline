@@ -1,51 +1,51 @@
 ###################################################3
 
 csv_name: test_auger 
-
 target_chunks: data/target_chunks.json
-
-
-
 
 #####################################################
 
 
 
-k: 3
+# --- Questions to evaluate (leave empty to use target_chunks.json) ---
+questions: []
 
 
 metrics_config: null
 metrics_config_path: "config/metrics_config.json"
 
-# --- Questions to evaluate (leave empty to use target_chunks.json) ---
-questions: []
-
 
 # --- Backend Logging (for fetching retrieval results if API is missing markers) ---
 aws_s3_bucket: "vision-rag-temp-bucket"
 
+#####################################################
 
 results_dirs:
   output_dir: ./eval_results
   vrag_result_json : "visionragresult.json"
   generated_answers_file : "generated_answers.json"
 
-
+#####################################################
 
 vrag_retriever:
   user_id: "001"
-  collection_name: MA42_AUGER
+  collection_name: BL3200_HAND_HELD_BLOWER
   query_reformulation: true
   use_reranking: true
   use_hybrid: true
   chunk_format: "chunk{id}"
 
+#####################################################
 
 vrag_client:
+  VISIONRAG_URL: "http://127.0.0.1:8000/api/v1/evaluation/users/{user_id}/chat_eval"
   vector_top_k: 5
   bm25_top_k: 5
   rerank_top_k: 5
   final_top_k: 5
-  VISIONRAG_URL: "http://127.0.0.1:8000/api/v1/evaluation/users/{user_id}/chat_eval"
   memory_enabled: False
   timeout: 300
+
+
+
+  
