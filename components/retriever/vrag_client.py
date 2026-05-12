@@ -59,15 +59,20 @@ class VisionRAGClient:
         user_id: str,
         question: str,
         thread_id: str,
-        eval_file_name: Optional[str],
+        vrag_file_name: Optional[str],
         is_last: bool,
     ) -> Dict[str, Any]:
         """Assemble the JSON payload sent to the VisionRAG API."""
+        logger.info(f"types {type(user_id)}, {type(question)}, {type(thread_id)}, {type(vrag_file_name)}, {type(is_last)}")
+        logger.info(f"values {user_id}, {question}, {thread_id}, {vrag_file_name}, {is_last}")
+        logger.info(f"types {type(self.query_reformulation)}, {type(self.use_reranking)}, {type(self.use_hybrid)}, {type(self.vector_top_k)}, {type(self.bm25_top_k)}, {type(self.rerank_top_k)}, {type(self.final_top_k)}, {type(self.memory_enabled)}")
+        logger.info(f"values {self.query_reformulation}, {self.use_reranking}, {self.use_hybrid}, {self.vector_top_k}, {self.bm25_top_k}, {self.rerank_top_k}, {self.final_top_k}, {self.memory_enabled}")
+
         return {
             "user_id":            user_id,
             "messages":           [question],
             "thread_id":          thread_id,
-            "eval_file_name":     eval_file_name,
+            "vrag_file_name":     vrag_file_name,
             "is_last":            is_last,
             "query_reformulation": self.query_reformulation,
             "use_reranking":      self.use_reranking,
@@ -116,7 +121,7 @@ class VisionRAGClient:
         user_id: str,
         question: str,
         thread_id: Optional[str] = None,
-        eval_file_name: Optional[str] = None,
+        vrag_file_name: Optional[str] = None,
         is_last: bool = False,
     ) -> Dict[str, Any]:
         """
@@ -126,7 +131,7 @@ class VisionRAGClient:
             user_id:        User identifier used to route the request.
             question:       The natural-language query.
             thread_id:      Conversation thread identifier (auto-generated if omitted).
-            eval_file_name: Name of the current evaluation run (written to the backend log).
+            vrag_file_name: Name of the current evaluation run (written to the backend log).
             is_last:        Signal to the backend that this is the final query in the batch.
 
         Returns:
@@ -139,9 +144,7 @@ class VisionRAGClient:
         """
         effective_thread_id = thread_id or f"{user_id}_retrieval_eval"
         url = self._url.format(user_id=user_id)
-        payload = self._build_payload(user_id, question, effective_thread_id, eval_file_name, is_last)
-        logger.info("=============================================================")
-        logger.info("VisionRAG API payload: %s", json.dumps(payload, indent=2))
+        payload = self._build_payload(user_id, question, effective_thread_id, vrag_file_name, is_last)
 
         preview_chunks: List[str] = []
         full_response = ""
@@ -201,4 +204,6 @@ class VisionRAGClient:
             "response_json": parsed_json,
             "raw_stream_preview": preview_chunks,
         }
+
+
 

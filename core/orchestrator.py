@@ -11,6 +11,7 @@ import ast
 import csv
 import json
 from pathlib import Path
+from difflib import get_close_matches
 from typing import Any, Dict, List, Optional
 
 from ragas.embeddings import LangchainEmbeddingsWrapper
@@ -52,12 +53,13 @@ class EvaluationOrchestrator:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.generated_answers_file   = self.output_dir / CONFIG["results_dirs"]["generated_answers_file"]
         self.visionrag_file           = self.output_dir / CONFIG["results_dirs"]["vrag_result_json"]
+        self.retrieval_metric_path = self.output_dir / "retriever_metrics.json"
 
         logger.info("✓ EvaluationOrchestrator ready → %s", self.output_dir)
 
     # ── Pipeline entry point ──────────────────────────────────────────────────
 
-    async def run(self, eval_file_name: Optional[str] = None) -> Dict[str, Any]:
+    async def run(self, vrag_file_name: Optional[str] = None) -> Dict[str, Any]:
         """Run the retrieval phase and return aggregated results."""
         logger.info("=" * 60)
         logger.info("Pipeline run started")
@@ -65,11 +67,11 @@ class EvaluationOrchestrator:
         questions = self.data_extractor.extract_questions()
         logger.info("Loaded %d questions for evaluation", len(questions))
 
-        await self._run_retriever(questions, eval_file_name=eval_file_name)
+        await self._run_retriever(questions, vrag_file_name=vrag_file_name)
 
     # ── Retrieval phase ───────────────────────────────────────────────────────
 
-    async def _run_retriever(self, questions, eval_file_name: Optional[str] = None) -> None:
+    async def _run_retriever(self, questions, vrag_file_name: Optional[str] = None) -> None:
         """Query VisionRAG for every question and persist results to disk."""
         logger.info("-" * 40)
         logger.info("RETRIEVAL PHASE — %d queries", len(questions))
@@ -87,7 +89,7 @@ class EvaluationOrchestrator:
             try:
                 result = await self.retriever.retrieve(
                     q,
-                    eval_file_name=eval_file_name,
+                    vrag_file_name=vrag_file_name,
                     is_last=is_last,
                 )
                 logger.info("Completed qid=%s successfully", q.qid)
@@ -134,14 +136,15 @@ class EvaluationOrchestrator:
             retrieval_metrics.ndcg_at_k or 0,
         )
 
-        out_path = self.output_dir / "retriever_metrics.json"
+        
         retrieval_metrics_dict = retrieval_metrics.to_dict()
-        FileHandler.save_json(retrieval_metrics_dict, out_path)
-        logger.info("Retrieval metrics saved → %s", out_path)
+        FileHandler.save_json(retrieval_metrics_dict, self.retrieval_metric_path)
+        logger.info("Retrieval metrics saved → %s", self.retrieval_metric_path)
 
         logger.info("=" * 60)
         logger.info("RETRIEVER METRICS PHASE complete")
         return {"retrieval_metrics": retrieval_metrics_dict}
+
 
     def compute_generator_metrics(self, file_path: Optional[Path] = None) -> Dict[str, Any]:
         """Load retrieval output, run generation metrics, and save JSON reports."""
@@ -257,6 +260,7 @@ class EvaluationOrchestrator:
 
         return generation_data, empty_context_count
 
+
     def _log_and_save_token_usage(self, tracker: TokenTracker) -> Dict[str, Any]:
         """Log per-query token breakdown and save the summary JSON."""
         token_summary = tracker.get_summary()
@@ -320,6 +324,7 @@ class EvaluationOrchestrator:
         else:
             logger.warning("No entries were constructed for visionrag result.")
 
+
     def _parse_retrieval_log(self, log_path: Path) -> Dict[str, Dict[str, Any]]:
         """
         Parse CSV log into:
@@ -335,7 +340,7 @@ class EvaluationOrchestrator:
         log_data: Dict[str, Dict[str, Any]] = {}
 
         if not log_path.exists():
-            logger.warning(
+            logger.info(
                 "Log file not found: %s — retrieved chunks will be empty",
                 log_path
             )
@@ -368,7 +373,7 @@ class EvaluationOrchestrator:
                                 ]
 
                         except (ValueError, SyntaxError):
-                            logger.warning(
+                            logger.info(
                                 "Failed to parse chunks string: %.120s",
                                 chunks_str
                             )
@@ -388,6 +393,31 @@ class EvaluationOrchestrator:
         return log_data
 
 
+    def find_best_match(self, question: str, log_data: Dict[str, Dict[str, Any]]):
+        """
+        Find closest matching question from log_data keys.
+        """
+
+        keys = list(log_data.keys())
+
+        # Try exact match first
+        if question.strip() in log_data:
+            return log_data[question.strip()]
+
+        # Fuzzy match
+        matches = get_close_matches(
+            question,
+            keys,
+            n=1,
+            cutoff=0.3
+        )
+
+        if matches:
+            return log_data[matches[0]]
+
+        return {}
+
+
     def _merge_visionrag_results(
         self,
         questions,
@@ -395,23 +425,30 @@ class EvaluationOrchestrator:
     ) -> List[Dict[str, Any]]:
         """Merge golden dataset with retrieval log."""
 
-        return [
-            {
+        results = []
+
+        for q in questions:
+
+            matched_data = self.find_best_match(q.text, log_data)
+
+            results.append({
                 "qid": q.qid,
                 "question": q.text,
                 "ground_truth_chunk_id": q.chunk_id,
                 "retrieved_chunk_ids":
-                    log_data.get(q.text.strip(), {}).get(
-                        "retrieved_chunk_ids",
-                        []
-                    ),
+                    matched_data.get("retrieved_chunk_ids", []),
+
                 "generated_answer":
-                    log_data.get(q.text.strip(), {}).get(
-                        "generated_answer",
-                        ""
-                    ),
+                    matched_data.get("generated_answer", ""),
+
                 "tag": q.question_type,
-            }
-            for q in questions
-        ]
+            })
+
+        return results
+
+
+
+
+
+
 

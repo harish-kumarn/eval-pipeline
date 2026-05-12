@@ -26,7 +26,7 @@ class FileHandler:
             json.dump(data, f, indent=indent, ensure_ascii=False)
 
     @staticmethod
-    def download_eval_file_from_s3(s3_bucket: str, eval_file_name: str, local_dir: str = "eval_results") -> str:
+    def download_eval_file_from_s3(s3_bucket: str, vrag_file_name: str, local_dir: str = "eval_results") -> str:
         import boto3
         import os
         from dotenv import load_dotenv
@@ -40,7 +40,7 @@ class FileHandler:
             region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-2")
         )
         
-        file_name_with_ext = f"{eval_file_name}.csv"
+        file_name_with_ext = f"{vrag_file_name}.csv"
         s3_key = f"eval_results/{file_name_with_ext}"
         
         local_path = Path(local_dir) / file_name_with_ext

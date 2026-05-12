@@ -51,7 +51,7 @@ class VisionRAGRetriever:
     async def retrieve(
         self,
         question: Question,
-        eval_file_name: Optional[str] = None,
+        vrag_file_name: Optional[str] = None,
         is_last: bool = False,
     ) -> RetrievalResult:
         """Query VisionRAG for *question* and return a structured RetrievalResult."""
@@ -63,7 +63,7 @@ class VisionRAGRetriever:
                 user_id       = self.user_id,
                 question      = question.text,
                 thread_id     = self.run_thread_id,
-                eval_file_name= eval_file_name,
+                vrag_file_name= vrag_file_name,
                 is_last       = is_last,
             )
             return response 

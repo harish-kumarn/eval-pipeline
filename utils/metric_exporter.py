@@ -112,6 +112,8 @@ def _load_csv_log(path: Optional[Path]) -> Dict[str, Dict[str, Any]]:
     if not path or not path.exists():
         logger.warning("CSV log not found: %s", path)
         return {}
+    
+    logger.info("Loading CSV log from: %s", path)
 
     data: Dict[str, Dict[str, Any]] = {}
     try:
@@ -120,7 +122,12 @@ def _load_csv_log(path: Optional[Path]) -> Dict[str, Dict[str, Any]]:
                 query = (row.get("query") or row.get("question") or "").strip()
                 if not query:
                     continue
+                logger.info("==============================================")
+                logger.info("Processing CSV log row : %s", row)
+                logger.info("==============================================")
+
                 data[query] = {
+                    "question_id":           _get_alias(row, "qid"),
                     "reformulated_query":    _get_alias(row, "reformulated_query", "reformulated_question"),
                     "vector_chunk_ids":      _get_alias(row, "vector_chunk_ids", "vector_search"),
                     "bm25_chunk_ids":        _get_alias(row, "bm25_chunk_ids", "bm25"),
@@ -142,16 +149,42 @@ def _build_rows(
     csv_log: Dict[str, Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     """Merge retrieval, generation, visionrag, and log data into flat export rows."""
+
     gen_map = {g["qid"]: g for g in generation}
-    rows    = []
+    rows = []
 
     for r in retrieval:
         qid = r.get("qid", "")
-        q   = (r.get("query") or "").strip()
+        q = (r.get("query") or "").strip()
 
-        g  = gen_map.get(qid, {})
+        g = gen_map.get(qid, {})
         vr = visionrag.get(qid, {})
-        cl = csv_log.get(q, {})
+
+        # ------------------------------------------------------------------
+        # FIX:
+        # First try lookup by qid (recommended structure)
+        # Fallback to query-text matching for backward compatibility
+        # ------------------------------------------------------------------
+        cl = csv_log.get(qid)
+
+        if cl is None:
+            cl = csv_log.get(q)
+
+        # fuzzy fallback for older logs
+        if cl is None:
+            q_lower = q.lower()
+
+            for k, v in csv_log.items():
+                if not isinstance(k, str):
+                    continue
+
+                k_lower = k.lower()
+
+                if q_lower in k_lower or k_lower in q_lower:
+                    cl = v
+                    break
+
+        cl = cl or {}
 
         raw_chunks = (
             cl.get("final_retrieved_chunks")
@@ -160,33 +193,73 @@ def _build_rows(
         )
 
         rows.append({
-            "timestamp":             datetime.now().strftime("%H:%M:%S"),
-            "query":                 q,
-            "reformulated_query":    cl.get("reformulated_query") or q,
-            "vector_chunk_ids":      cl.get("vector_chunk_ids", ""),
-            "bm25_chunk_ids":        cl.get("bm25_chunk_ids", ""),
-            "pre_rerank_chunk_ids":  cl.get("pre_rerank_chunk_ids", ""),
-            "post_rerank_chunk_ids": cl.get("post_rerank_chunk_ids", ""),
-            "final_retrieved_chunks": _normalise_chunks(raw_chunks, top_k),
-            "generated_answer":      vr.get("generated_answer") or g.get("answer") or r.get("generated_answer", ""),
-            "qid":                   qid,
-            "type":                  r.get("tag", ""),
-            "top_k":                 top_k,
-            "actual_chunk":          vr.get("ground_truth_chunk_id") or r.get("ground_truth_chunk_id", ""),
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
+
+            "query": q,
+
+            "reformulated_query":
+                cl.get("reformulated_query") or q,
+
+            "vector_chunk_ids":
+                cl.get("vector_chunk_ids", ""),
+
+            "bm25_chunk_ids":
+                cl.get("bm25_chunk_ids", ""),
+
+            "pre_rerank_chunk_ids":
+                cl.get("pre_rerank_chunk_ids", ""),
+
+            "post_rerank_chunk_ids":
+                cl.get("post_rerank_chunk_ids", ""),
+
+            "final_retrieved_chunks":
+                _normalise_chunks(raw_chunks, top_k),
+
+            "generated_answer":
+                vr.get("generated_answer")
+                or g.get("answer")
+                or r.get("generated_answer", ""),
+
+            "qid": qid,
+
+            "type":
+                r.get("tag", ""),
+
+            "top_k":
+                int(top_k),
+
+            "actual_chunk":
+                vr.get("ground_truth_chunk_id")
+                or r.get("ground_truth_chunk_id", ""),
+
             # Retrieval metrics
-            "mrr":                   r.get("mrr"),
-            "recall":                r.get("recall"),
-            "precision":             r.get("precision"),
-            "ndcg":                  r.get("ndcg"),
+            "mrr":
+                r.get("mrr"),
+
+            "recall":
+                r.get("recall"),
+
+            "precision":
+                r.get("precision"),
+
+            "ndcg":
+                r.get("ndcg"),
+
             # Generation metrics
-            "faithfulness":          g.get("faithfulness"),
-            "context_precision":     g.get("context_precision"),
-            "answer_correctness":    g.get("answer_correctness"),
-            "answer_relevancy":      g.get("answer_relevancy"),
+            "faithfulness":
+                g.get("faithfulness"),
+
+            "context_precision":
+                g.get("context_precision"),
+
+            "answer_correctness":
+                g.get("answer_correctness"),
+
+            "answer_relevancy":
+                g.get("answer_relevancy"),
         })
 
     return rows
-
 
 # ── Internal export helpers ───────────────────────────────────────────────────
 
@@ -314,12 +387,12 @@ def _write_db(
 
 def export_all_metrics(
     run_output_dir: Path,
-    visionrag_path: Path,
+    visionrag_populated_path: Path,
     retrieval_path: Path,
     generation_path: Path,
-    vrag_client_csv: Path,
+    vrag_file_name_csv: Path,
     top_k: int,
-    csv_filename: str,
+    result_csv_filename: str,
     table_name: str,
     hybrid_search: bool,
     query_reformulation: bool,
@@ -343,13 +416,21 @@ def export_all_metrics(
         generation_pq = (json.loads(generation_path.read_text(encoding="utf-8")) or {}).get("per_query_metrics", [])
 
     # Load shared lookup data once — reused by both exports.
-    visionrag = _load_visionrag_lookup(visionrag_path)
-    csv_log   = _load_csv_log(vrag_client_csv)
+    visionrag = _load_visionrag_lookup(visionrag_populated_path)
+    csv_log   = _load_csv_log(vrag_file_name_csv)
+    logger.info("=======================================================================================================")
+    logger.info("VisionRAG CSV log: %s", csv_log)
+    logger.info("VisionRAG lookup: %s", visionrag)
+    logger.info("=======================================================================================================")
+
     rows      = _build_rows(retrieval_pq, generation_pq, top_k, visionrag, csv_log)
+
+    logger.info("VisionRAG ROWS: %s", rows)
+    logger.info("=======================================================================================================")
 
     # CSV export
     run_output_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = _write_csv(rows, run_output_dir / csv_filename)
+    csv_path = _write_csv(rows, run_output_dir / result_csv_filename)
 
     remove_columns_from_csv(
         csv_path=csv_path,
@@ -378,17 +459,17 @@ def export_to_csv(
     retrieval: List[Dict[str, Any]],
     generation: List[Dict[str, Any]],
     output_dir: Path,
-    visionrag_path: Path,
+    visionrag_populated_path: Path,
     top_k: int,
     log_path: Optional[Path] = None,
-    csv_filename: Optional[str] = None,
+    result_csv_filename: Optional[str] = None,
 ) -> Path:
     """Standalone CSV export (loads its own data — use export_all_metrics to avoid double I/O)."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    rows     = _build_rows(retrieval, generation, top_k, _load_visionrag_lookup(visionrag_path), _load_csv_log(log_path))
-    csv_path = output_dir / (csv_filename or "evaluation_results.csv")
+    rows     = _build_rows(retrieval, generation, top_k, _load_visionrag_lookup(visionrag_populated_path), _load_csv_log(log_path))
+    csv_path = output_dir / (result_csv_filename or "evaluation_results.csv")
     return _write_csv(rows, csv_path)
 
 
@@ -396,7 +477,7 @@ def export_to_db(
     retrieval: List[Dict[str, Any]],
     generation: List[Dict[str, Any]],
     output_dir: Path,
-    visionrag_path: Path,
+    visionrag_populated_path: Path,
     top_k: int,
     hybrid_search: bool = True,
     query_reformulation: bool = False,
@@ -410,7 +491,7 @@ def export_to_db(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    rows    = _build_rows(retrieval, generation, top_k, _load_visionrag_lookup(visionrag_path), _load_csv_log(log_path))
+    rows    = _build_rows(retrieval, generation, top_k, _load_visionrag_lookup(visionrag_populated_path), _load_csv_log(log_path))
     db_path = output_dir / db_filename
     return _write_db(
         rows             = rows,
