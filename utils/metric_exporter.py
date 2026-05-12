@@ -411,17 +411,17 @@ def export_all_metrics(
 
     # DB export
     db_path = None
-    # db_path = Path(run_output_dir) / db_filename
-    # db_path.parent.mkdir(parents=True, exist_ok=True)
-    # _write_db(
-    #     rows             = rows,
-    #     db_path          = db_path,
-    #     table            = _safe_table_name(table_name),
-    #     hybrid_search    = hybrid_search,
-    #     query_reformulation = query_reformulation,
-    #     reranking        = reranking,
-    #     final_csv_name   = csv_path.name,
-    # )
+    db_path = Path(run_output_dir) / db_filename
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_db(
+        rows             = rows,
+        db_path          = db_path,
+        table            = _safe_table_name(table_name),
+        hybrid_search    = hybrid_search,
+        query_reformulation = query_reformulation,
+        reranking        = reranking,
+        final_csv_name   = csv_path.name,
+    )
 
     return csv_path, db_path
 
