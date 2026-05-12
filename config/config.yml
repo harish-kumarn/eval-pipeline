@@ -1,6 +1,6 @@
 ###################################################3
 
-csv_name: test_auger 
+csv_name: blower_test 
 target_chunks: data/target_chunks.json
 
 #####################################################
@@ -16,6 +16,7 @@ metrics_config_path: "config/metrics_config.json"
 
 
 # --- Backend Logging (for fetching retrieval results if API is missing markers) ---
+
 aws_s3_bucket: "vision-rag-temp-bucket"
 
 #####################################################
@@ -30,9 +31,9 @@ results_dirs:
 vrag_retriever:
   user_id: "001"
   collection_name: BL3200_HAND_HELD_BLOWER
-  query_reformulation: true
-  use_reranking: true
-  use_hybrid: true
+  query_reformulation: False
+  use_reranking: False
+  use_hybrid: True 
   chunk_format: "chunk{id}"
 
 #####################################################
