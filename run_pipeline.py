@@ -76,7 +76,7 @@ def main() -> None:
             top_k=CONFIG["vrag_client"]["final_top_k"],
             result_csv_filename=paths["result_csv_filename"],
             table_name=vrag_file_name,
-            hybrid_search=CONFIG.get("use_hybrid", False),
+            hybrid_search=CONFIG.get("use_hybrid", False), 
             query_reformulation=CONFIG.get("query_reformulation", False),
             reranking=CONFIG.get("use_reranking", False),
             db_filename="../../eval_dashboard/metrics.db",

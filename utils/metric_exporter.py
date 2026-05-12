@@ -12,6 +12,7 @@ Public API:
 import pandas as pd
 import ast
 import csv
+import difflib
 import json
 import re
 import sqlite3
@@ -37,7 +38,7 @@ METRIC_COLS: Tuple[str, ...] = (
 
 # Full ordered column list for the SQLite results table.
 ALL_COLS: Tuple[str, ...] = (
-    "timestamp", "query", "type", "top_k",
+    "timestamp", "qid", "query", "type", "top_k",
     "reformulated_query", "vector_chunk_ids", "bm25_chunk_ids",
     "pre_rerank_chunk_ids", "post_rerank_chunk_ids",
     "final_retrieved_chunks", "actual_chunk",
@@ -122,12 +123,14 @@ def _load_csv_log(path: Optional[Path]) -> Dict[str, Dict[str, Any]]:
                 query = (row.get("query") or row.get("question") or "").strip()
                 if not query:
                     continue
-                logger.info("==============================================")
-                logger.info("Processing CSV log row : %s", row)
-                logger.info("==============================================")
+                # logger.info("==============================================")
+                # logger.info("Processing CSV log row : %s", row)
+                # logger.info("==============================================")
 
-                data[query] = {
-                    "question_id":           _get_alias(row, "qid"),
+                qid = _get_alias(row, "qid", "question_id")
+                
+                entry = {
+                    "question_id":           qid,
                     "reformulated_query":    _get_alias(row, "reformulated_query", "reformulated_question"),
                     "vector_chunk_ids":      _get_alias(row, "vector_chunk_ids", "vector_search"),
                     "bm25_chunk_ids":        _get_alias(row, "bm25_chunk_ids", "bm25"),
@@ -135,6 +138,12 @@ def _load_csv_log(path: Optional[Path]) -> Dict[str, Dict[str, Any]]:
                     "post_rerank_chunk_ids": _get_alias(row, "post_rerank_chunk_ids", "after_rr"),
                     "final_retrieved_chunks": _get_alias(row, "final_retrieved_chunks", "retrieved"),
                 }
+                
+                # Store by qid (if exists) and by query string for robust lookups
+                if qid:
+                    data[qid] = entry
+                data[query] = entry
+
     except Exception as e:
         logger.error("Error reading CSV log %s: %s", path, e)
 
@@ -150,7 +159,11 @@ def _build_rows(
 ) -> List[Dict[str, Any]]:
     """Merge retrieval, generation, visionrag, and log data into flat export rows."""
 
-    gen_map = {g["qid"]: g for g in generation}
+    gen_map = {g["qid"]: g for g in generation if "qid" in g}
+    
+    # Pre-compute lowercase keys for faster fallback matching
+    csv_log_lower = {k.lower(): v for k, v in csv_log.items() if isinstance(k, str)}
+    
     rows = []
 
     for r in retrieval:
@@ -173,16 +186,22 @@ def _build_rows(
         # fuzzy fallback for older logs
         if cl is None:
             q_lower = q.lower()
-
-            for k, v in csv_log.items():
-                if not isinstance(k, str):
-                    continue
-
-                k_lower = k.lower()
-
-                if q_lower in k_lower or k_lower in q_lower:
-                    cl = v
-                    break
+            cl = csv_log_lower.get(q_lower)
+            
+            if cl is None:
+                # 1. Try difflib match (like orchestrator.py)
+                keys = [k for k in csv_log_lower.keys() if isinstance(k, str) and k.strip()]
+                if keys:
+                    matches = difflib.get_close_matches(q_lower, keys, n=1, cutoff=0.3)
+                    if matches:
+                        cl = csv_log_lower[matches[0]]
+                
+                # 2. Strict substring as absolute last resort
+                if cl is None:
+                    for k_lower, v in csv_log_lower.items():
+                        if q_lower in k_lower or k_lower in q_lower:
+                            cl = v
+                            break
 
         cl = cl or {}
 
@@ -194,69 +213,28 @@ def _build_rows(
 
         rows.append({
             "timestamp": datetime.now().strftime("%H:%M:%S"),
-
-            "query": q,
-
-            "reformulated_query":
-                cl.get("reformulated_query") or q,
-
-            "vector_chunk_ids":
-                cl.get("vector_chunk_ids", ""),
-
-            "bm25_chunk_ids":
-                cl.get("bm25_chunk_ids", ""),
-
-            "pre_rerank_chunk_ids":
-                cl.get("pre_rerank_chunk_ids", ""),
-
-            "post_rerank_chunk_ids":
-                cl.get("post_rerank_chunk_ids", ""),
-
-            "final_retrieved_chunks":
-                _normalise_chunks(raw_chunks, top_k),
-
-            "generated_answer":
-                vr.get("generated_answer")
-                or g.get("answer")
-                or r.get("generated_answer", ""),
-
             "qid": qid,
-
-            "type":
-                r.get("tag", ""),
-
-            "top_k":
-                int(top_k),
-
-            "actual_chunk":
-                vr.get("ground_truth_chunk_id")
-                or r.get("ground_truth_chunk_id", ""),
-
+            "query": q,
+            "type": r.get("tag", ""),
+            "top_k": int(top_k),
+            "reformulated_query": cl.get("reformulated_query") or q,
+            "vector_chunk_ids": cl.get("vector_chunk_ids", ""),
+            "bm25_chunk_ids": cl.get("bm25_chunk_ids", ""),
+            "pre_rerank_chunk_ids": cl.get("pre_rerank_chunk_ids", ""),
+            "post_rerank_chunk_ids": cl.get("post_rerank_chunk_ids", ""),
+            "final_retrieved_chunks": _normalise_chunks(raw_chunks, top_k),
+            "actual_chunk": vr.get("ground_truth_chunk_id") or r.get("ground_truth_chunk_id", ""),
+            "generated_answer": vr.get("generated_answer") or g.get("answer") or r.get("generated_answer", ""),
             # Retrieval metrics
-            "mrr":
-                r.get("mrr"),
-
-            "recall":
-                r.get("recall"),
-
-            "precision":
-                r.get("precision"),
-
-            "ndcg":
-                r.get("ndcg"),
-
+            "mrr": r.get("mrr"),
+            "recall": r.get("recall"),
+            "precision": r.get("precision"),
+            "ndcg": r.get("ndcg"),
             # Generation metrics
-            "faithfulness":
-                g.get("faithfulness"),
-
-            "context_precision":
-                g.get("context_precision"),
-
-            "answer_correctness":
-                g.get("answer_correctness"),
-
-            "answer_relevancy":
-                g.get("answer_relevancy"),
+            "faithfulness": g.get("faithfulness"),
+            "context_precision": g.get("context_precision"),
+            "answer_correctness": g.get("answer_correctness"),
+            "answer_relevancy": g.get("answer_relevancy"),
         })
 
     return rows
@@ -300,6 +278,7 @@ def _write_db(
             CREATE TABLE IF NOT EXISTS "{table}" (
                 id                     INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp              TEXT,
+                qid                    TEXT,
                 query                  TEXT,
                 type                   TEXT,
                 top_k                  INTEGER,
@@ -418,15 +397,7 @@ def export_all_metrics(
     # Load shared lookup data once — reused by both exports.
     visionrag = _load_visionrag_lookup(visionrag_populated_path)
     csv_log   = _load_csv_log(vrag_file_name_csv)
-    logger.info("=======================================================================================================")
-    logger.info("VisionRAG CSV log: %s", csv_log)
-    logger.info("VisionRAG lookup: %s", visionrag)
-    logger.info("=======================================================================================================")
-
     rows      = _build_rows(retrieval_pq, generation_pq, top_k, visionrag, csv_log)
-
-    logger.info("VisionRAG ROWS: %s", rows)
-    logger.info("=======================================================================================================")
 
     # CSV export
     run_output_dir.mkdir(parents=True, exist_ok=True)

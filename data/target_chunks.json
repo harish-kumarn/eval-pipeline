@@ -1,35 +1,49 @@
 {
   "chunk1": {
-    "text": "MARUYAMA\n\n# OPERATOR'S MANUAL\n## AUGER\n## MA42\n\nCompletely read and understand this manual prior to using this product.",
+    "text": "# MARUYAMA OPERATOR'S MANUAL\n\nBL3200\nHAND-HELD BLOWER\n\nPremium Outdoor Power Equipment\nMaruyama. Extraordinary.\nCompletely read and understand this manual prior to using this product.",
     "images": [
       "pdf_images/page_1_img_1.png"
     ],
-    "chunk_description": "Cover page of the Maruyama MA42 Auger Operator's Manual, introducing the product and a general instruction.",
+    "chunk_description": "Cover page of the Maruyama BL3200 Hand-Held Blower operator's manual, including brand information and a general instruction.",
     "overlapping": false,
-    "overlapping_reason": "",
+    "overlapping_reason": "This is a complete cover page and no content flows to the next page; the next page begins a new section (Limited Warranty Statement).",
     "semantic_completeness_score": 9.5,
     "questions": {
       "direct": [
         {
-          "question": "Which specific Maruyama product is this document an operator's manual for?",
-          "answer_extract": "OPERATOR'S MANUAL\n## AUGER\n## MA42",
-          "confidence": 0.95
+          "question": "What product is this Maruyama operator's manual for?",
+          "answer_extract": "MARUYAMA OPERATOR'S MANUAL BL3200 HAND-HELD BLOWER",
+          "confidence": 0.98
         },
         {
-          "question": "What primary instruction is given to the user before operating this Maruyama product?",
-          "answer_extract": "Completely read and understand this manual prior to using this product.",
+          "question": "What type of equipment is the Maruyama BL3200?",
+          "answer_extract": "BL3200 HAND-HELD BLOWER",
           "confidence": 0.98
+        },
+        {
+          "question": "What essential step should be taken before using this Maruyama product?",
+          "answer_extract": "Completely read and understand this manual prior to using this product.",
+          "confidence": 0.95
         }
       ],
-      "indirect": []
+      "indirect": [
+        {
+          "question": "What is a prerequisite for safe operation of the Maruyama BL3200 hand-held blower?",
+          "answer_extract": "Completely read and understand this manual prior to using this product.",
+          "confidence": 0.88
+        }
+      ]
     },
-    "index_concept_vocabulary": "Maruyama, auger, MA42, operator's manual, product usage, safety instructions",
-    "layout_complexity": "simple",
-    "layout_complexity_score": 2,
+    "index_concept_vocabulary": "Maruyama BL3200, hand-held blower, operator's manual, product information, safety instructions",
+    "layout_complexity": "moderate",
+    "layout_complexity_score": 5,
     "layout_elements": [
+      "title",
+      "heading",
       "text_blocks",
-      "headings",
-      "images"
+      "image",
+      "brand_info",
+      "instruction"
     ],
     "ocr_corrections": [],
     "content_continuation": {
@@ -37,7 +51,8 @@
       "to_next_page": false,
       "continuation_points": []
     },
-    "chunk_quality_score": 9.2,
+    "chunk_quality_score": 9.0,
     "page_no": 1
   }
+
 }

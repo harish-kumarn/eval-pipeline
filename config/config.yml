@@ -39,9 +39,9 @@ vrag_retriever:
 
 vrag_client:
   VISIONRAG_URL: "http://127.0.0.1:8000/api/v1/evaluation/users/{user_id}/chat_eval"
-  vector_top_k: 5
-  bm25_top_k: 5
-  rerank_top_k: 5
+  vector_top_k: 10
+  bm25_top_k: 10
+  rerank_top_k: 8
   final_top_k: 5
   memory_enabled: False
   timeout: 300

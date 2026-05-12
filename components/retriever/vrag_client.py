@@ -63,11 +63,7 @@ class VisionRAGClient:
         is_last: bool,
     ) -> Dict[str, Any]:
         """Assemble the JSON payload sent to the VisionRAG API."""
-        logger.info(f"types {type(user_id)}, {type(question)}, {type(thread_id)}, {type(vrag_file_name)}, {type(is_last)}")
-        logger.info(f"values {user_id}, {question}, {thread_id}, {vrag_file_name}, {is_last}")
-        logger.info(f"types {type(self.query_reformulation)}, {type(self.use_reranking)}, {type(self.use_hybrid)}, {type(self.vector_top_k)}, {type(self.bm25_top_k)}, {type(self.rerank_top_k)}, {type(self.final_top_k)}, {type(self.memory_enabled)}")
-        logger.info(f"values {self.query_reformulation}, {self.use_reranking}, {self.use_hybrid}, {self.vector_top_k}, {self.bm25_top_k}, {self.rerank_top_k}, {self.final_top_k}, {self.memory_enabled}")
-
+        
         return {
             "user_id":            user_id,
             "messages":           [question],

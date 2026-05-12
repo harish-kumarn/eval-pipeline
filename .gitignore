@@ -3,20 +3,23 @@
 .env
 .venv
 outputs/
-visionragresult.json
+
 test.ipynb
 dump/
-# metrics outputs (do not commit)
-#generator_metrics.json
-#retriever_metrics.json
-#visionragresult.json
 
-# data
-#data/target_chunks.json
-test_api.py
-core/api.py
+
+
 .venv
 logs/
-eval_results/
 pyproject.toml
-token_calculation_polesaw_30-04-2026_14-24-15
+
+
+### metrics outputs 
+eval_results/
+visionragresult.json
+generator_metrics.json
+retriever_metrics.json
+visionragresult.json
+*.json
+
+
