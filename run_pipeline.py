@@ -7,7 +7,7 @@ from config.config_loader import load_config
 from config.logger import setup_logger
 from core.orchestrator import EvaluationOrchestrator
 from utils.metric_exporter import export_all_metrics
-from utils.support_evals.file_handler import FileHandler
+from utils.support_evals.file_handler import FileHandler, delete_csv_from_s3
 
 
 def setup_run_environment(CONFIG: dict, logger) -> dict:
@@ -84,6 +84,10 @@ def main() -> None:
 
         logger.info(f"📊 Per-question CSV → {csv_out} (final_csv_name={csv_out.name})")
         logger.info(f"🗄️  Per-question DB  → {db_out}")
+
+        if CONFIG.get("delete_s3_csv"):
+            delete_csv_from_s3(vrag_file_name)
+            logger.info(f"🗑️  Deleted CSV from S3: {vrag_file_name}")
 
         logger.info("✅ Pipeline and Analysis completed successfully")
     

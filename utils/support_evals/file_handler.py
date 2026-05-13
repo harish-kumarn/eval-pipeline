@@ -56,3 +56,53 @@ class FileHandler:
             return None
 
 
+
+import os
+import boto3
+from botocore.exceptions import ClientError
+
+def delete_csv_from_s3(file_name: str) -> bool:
+    """
+    Delete a CSV file from S3 if it exists.
+
+    Args:
+        file_name (str): CSV file name
+                         Example: "12_05_blower_test_13_31.csv"
+
+    Returns:
+        bool:
+            True  -> file deleted
+            False -> file not found
+    """
+
+    S3_BUCKET = "vision-rag-temp-bucket"
+    S3_PREFIX = "eval_results/" 
+
+    s3 = boto3.client(
+            's3',
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-2")
+        )
+
+    key = f"{S3_PREFIX}{file_name}"
+
+    try:
+        # Check if object exists
+        s3.head_object(Bucket=S3_BUCKET, Key=key)
+
+        # Delete object
+        s3.delete_object(Bucket=S3_BUCKET, Key=key)
+
+        logger.info(f"Deleted: s3://{S3_BUCKET}/{key}")
+        return True
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+
+        if error_code in ["404", "NoSuchKey"]:
+            logger.info(f"File does not exist: s3://{S3_BUCKET}/{key}")
+            return False
+
+        raise
+

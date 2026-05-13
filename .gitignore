@@ -11,6 +11,7 @@ dump/
 data/
 .venv
 logs/
+testing_blower/
 pyproject.toml
 
 
@@ -21,5 +22,5 @@ generator_metrics.json
 retriever_metrics.json
 visionragresult.json
 *.json
-
+*.db
 
