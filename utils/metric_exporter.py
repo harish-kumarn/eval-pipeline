@@ -211,6 +211,19 @@ def _build_rows(
             or r.get("retrieved_chunk_ids", [])
         )
 
+        vector_chunk_ids = _parse_chunk_ids(cl.get("vector_chunk_ids", ""))
+        bm25_chunk_ids = _parse_chunk_ids(cl.get("bm25_chunk_ids", ""))
+
+        actual_chunk_raw = (
+            vr.get("ground_truth_chunk_id")
+            or r.get("ground_truth_chunk_id", "")
+        )
+        actual_chunk_int = _chunk_id_to_int(actual_chunk_raw)
+
+        vector_bool = 1 if actual_chunk_int is not None and actual_chunk_int in vector_chunk_ids else 0
+        bm25_bool = 1 if actual_chunk_int is not None and actual_chunk_int in bm25_chunk_ids else 0
+
+
         rows.append({
             "timestamp": datetime.now().strftime("%H:%M:%S"),
             "qid": qid,
@@ -224,6 +237,8 @@ def _build_rows(
             "post_rerank_chunk_ids": cl.get("post_rerank_chunk_ids", ""),
             "final_retrieved_chunks": _normalise_chunks(raw_chunks, top_k),
             "actual_chunk": vr.get("ground_truth_chunk_id") or r.get("ground_truth_chunk_id", ""),
+            "vector_bool": vector_bool,
+            "bm25_bool": bm25_bool,
             "generated_answer": vr.get("generated_answer") or g.get("answer") or r.get("generated_answer", ""),
             # Retrieval metrics
             "mrr": r.get("mrr"),
@@ -519,5 +534,86 @@ def remove_columns_from_csv(
     df.to_csv(save_path, index=False)
 
     return save_path
+
+
+
+def _parse_chunk_ids(value: Any) -> List[int]:
+    """
+    Parse chunk-id lists stored as:
+      - Python list
+      - string representation of list, e.g. "[24, 25, 22]"
+      - tuple/set
+    and return a clean list of ints.
+    """
+    if value is None or value == "":
+        return []
+
+    parsed = value
+
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return []
+
+        try:
+            parsed = ast.literal_eval(s)
+        except Exception:
+            # Fallback for comma-separated strings like "24,25,22"
+            parts = [p.strip() for p in s.split(",")]
+            out = []
+            for p in parts:
+                chunk_int = _chunk_id_to_int(p)
+                if chunk_int is not None:
+                    out.append(chunk_int)
+            return out
+
+    if isinstance(parsed, (list, tuple, set)):
+        out = []
+        for item in parsed:
+            chunk_int = _chunk_id_to_int(item)
+            if chunk_int is not None:
+                out.append(chunk_int)
+        return out
+
+    chunk_int = _chunk_id_to_int(parsed)
+    return [chunk_int] if chunk_int is not None else []
+
+def _chunk_id_to_int(value: Any) -> Optional[int]:
+    """
+    Convert values like:
+      - 24
+      - "24"
+      - "chunk24"
+      - "chunk_24"
+    into integer 24.
+    Returns None if conversion is not possible.
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, int):
+        return value
+
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+
+        # Direct integer string
+        if s.isdigit():
+            return int(s)
+
+        # Extract trailing digits from strings like "chunk24"
+        m = re.search(r"(\d+)$", s)
+        if m:
+            return int(m.group(1))
+
+    return None
+
+
+
 
 
