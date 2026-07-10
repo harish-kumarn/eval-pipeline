@@ -1,30 +1,22 @@
 
 
 
-
-
-
 ###################################################3
 
 csv_name: delete
 target_chunks: data/target_chunks_sample.json
 
+# --- Backend Logging  ---
+
+aws_s3_bucket: "vision-rag-temp-bucket"
+delete_s3_csv: True
+
+
 #####################################################
-
-
-
-# --- Questions to evaluate (leave empty to use target_chunks.json) ---
-questions: []
-
 
 metrics_config: null
 metrics_config_path: "config/metrics_config.json"
 
-
-# --- Backend Logging (for fetching retrieval results if API is missing markers) ---
-
-aws_s3_bucket: "vision-rag-temp-bucket"
-delete_s3_csv: True
 
 #####################################################
 
@@ -32,15 +24,16 @@ results_dirs:
   output_dir: ./eval_results
   vrag_result_json : "visionragresult.json"
   generated_answers_file : "generated_answers.json"
+  retriever_metrics : "retriever_metrics.json"
 
 #####################################################
 
 vrag_retriever:
   user_id: "007"
-  collection_name: testing_blower
+  collection_name: BL3200_HAND_HELD_BLOWER
   query_reformulation: False
   use_reranking: False
-  use_hybrid: True 
+  use_hybrid: False 
   chunk_format: "chunk{id}"
 
 #####################################################
@@ -51,8 +44,10 @@ vrag_client:
   bm25_top_k: 10
   rerank_top_k: 8
   final_top_k: 5
-  memory_enabled: False
+  memory_enabled: true
   timeout: 300
+  
+#####################################################
 
 
 
