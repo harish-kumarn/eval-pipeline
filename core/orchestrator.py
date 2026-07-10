@@ -33,29 +33,33 @@ CONFIG = load_config("config/config.yml")
 class EvaluationOrchestrator:
     """Runs the end-to-end RAG evaluation pipeline."""
 
-    def __init__(self, output_dir: Optional[Path] = None) -> None:
-        logger.info("Initializing EvaluationOrchestrator")
+    def __init__(self, 
+                 input_questions: Optional[str] = None, 
+                 generated_answers_path: Optional[Path] = None, 
+                 visionrag_populated_path: Optional[Path] = None, 
+                 output_dir: Optional[Path] = None) -> None:
 
+        ### Initialize Paths
+        self.output_dir               = output_dir
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.generated_answers_file   = generated_answers_path
+        self.visionrag_file           = visionrag_populated_path
+        self.retrieval_metric_path = self.output_dir / CONFIG["results_dirs"]["retriever_metrics"]
+
+        ### Initialize Metrics Calculators and Vrag Client
+        self.data_extractor           = DataExtractor(input_questions)
+        self.retrieval_calculator     = RetrievalMetricsCalculator()
+        self.generation_calculator    = GenerationMetricsCalculator()
         self.retriever = VisionRAGRetriever(
             user_id             = CONFIG["vrag_retriever"]["user_id"],
             collection_name     = CONFIG["vrag_retriever"]["collection_name"],
             query_reformulation = CONFIG["vrag_retriever"]["query_reformulation"],
             use_reranking       = CONFIG["vrag_retriever"]["use_reranking"],
             use_hybrid          = CONFIG["vrag_retriever"]["use_hybrid"],
-            chunk_format        = CONFIG["vrag_retriever"]["chunk_format"],
         )
 
-        self.data_extractor           = DataExtractor(CONFIG["target_chunks"])
-        self.retrieval_calculator     = RetrievalMetricsCalculator()
-        self.generation_calculator    = GenerationMetricsCalculator()
+        logger.info("✓ Evaluation Orchestrator ready → %s", self.output_dir)
 
-        self.output_dir               = output_dir or Path(CONFIG["results_dirs"]["output_dir"])
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.generated_answers_file   = self.output_dir / CONFIG["results_dirs"]["generated_answers_file"]
-        self.visionrag_file           = self.output_dir / CONFIG["results_dirs"]["vrag_result_json"]
-        self.retrieval_metric_path = self.output_dir / "retriever_metrics.json"
-
-        logger.info("✓ EvaluationOrchestrator ready → %s", self.output_dir)
 
     # ── Pipeline entry point ──────────────────────────────────────────────────
 
@@ -68,6 +72,7 @@ class EvaluationOrchestrator:
         logger.info("Loaded %d questions for evaluation", len(questions))
 
         await self._run_retriever(questions, vrag_file_name=vrag_file_name)
+
 
     # ── Retrieval phase ───────────────────────────────────────────────────────
 
@@ -340,10 +345,7 @@ class EvaluationOrchestrator:
         log_data: Dict[str, Dict[str, Any]] = {}
 
         if not log_path.exists():
-            logger.info(
-                "Log file not found: %s — retrieved chunks will be empty",
-                log_path
-            )
+            logger.info("Log file not found: %s — retrieved chunks will be empty", log_path)
             return log_data
 
         fmt = CONFIG.get("chunk_format", "chunk{id}")

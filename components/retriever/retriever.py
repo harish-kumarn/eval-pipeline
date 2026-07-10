@@ -30,17 +30,15 @@ class VisionRAGRetriever:
         query_reformulation: Optional[bool] = None,
         use_reranking: Optional[bool] = None,
         use_hybrid: Optional[bool] = None,
-        chunk_format: Optional[str] = None, 
     ) -> None:
-        # Resolve all values from config when not explicitly provided.
-        self.user_id      = user_id      or CONFIG["vrag_retriever"]["user_id"]
-        self.collection_name  = collection_name  or CONFIG["vrag_retriever"]["collection_name"]
-        self.chunk_format = chunk_format or CONFIG["vrag_retriever"]["chunk_format"]
+
+        self.user_id      = user_id
+        self.collection_name  = collection_name
 
         self.client = VisionRAGClient(
-            query_reformulation = query_reformulation if query_reformulation is not None else CONFIG["vrag_retriever"]["query_reformulation"],
-            use_reranking    = use_reranking    if use_reranking    is not None else CONFIG["vrag_retriever"]["use_reranking"],
-            use_hybrid       = use_hybrid       if use_hybrid       is not None else CONFIG["vrag_retriever"]["use_hybrid"],
+            query_reformulation = query_reformulation,
+            use_reranking    = use_reranking,
+            use_hybrid       = use_hybrid,
         )
 
         # Unique thread ID scoped to this retriever instance / evaluation run.
@@ -81,7 +79,8 @@ class VisionRAGRetriever:
 
         # query params
         params = {
-            "doc_id": self.collection_name
+            "doc_id": self.collection_name,
+            "memory_enabled": CONFIG['vrag_client']['memory_enabled']
         }
 
         ### Before calling the reinit chat API tag user with doc in localhost 8000
@@ -105,5 +104,7 @@ class VisionRAGRetriever:
                 "status": "error",
                 "message": f"Other error occurred: {err}"
             }
+
+
 
 

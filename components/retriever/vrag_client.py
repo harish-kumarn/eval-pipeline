@@ -39,13 +39,14 @@ class VisionRAGClient:
         self.query_reformulation = query_reformulation
         self.use_reranking    = use_reranking
         self.use_hybrid       = use_hybrid
+        self._url             = CONFIG["vrag_client"].get("VISIONRAG_URL", "http://localhost:8000")
         self.vector_top_k     = CONFIG["vrag_client"].get("vector_top_k", 5)
         self.bm25_top_k       = CONFIG["vrag_client"].get("bm25_top_k", 5)
         self.rerank_top_k     = CONFIG["vrag_client"].get("rerank_top_k", 5)
         self.final_top_k      = CONFIG["vrag_client"].get("final_top_k", 5)
-        self._url             = CONFIG["vrag_client"]["VISIONRAG_URL"]
         self.memory_enabled   = CONFIG["vrag_client"].get("memory_enabled", True)
-        self.timeout          = CONFIG["vrag_client"]["timeout"]
+        self.timeout          = CONFIG["vrag_client"].get("timeout", 30)
+        
 
         logger.info(
             f"VisionRAGClient initialized — query_reformulation={self.query_reformulation}, "
@@ -138,7 +139,7 @@ class VisionRAGClient:
                 "raw_stream_preview": List[str],   # first 5 chunks only
             }
         """
-        effective_thread_id = thread_id or f"{user_id}_retrieval_eval"
+        effective_thread_id = thread_id or f"{vrag_file_name}_retrieval_eval"
         url = self._url.format(user_id=user_id)
         payload = self._build_payload(user_id, question, effective_thread_id, vrag_file_name, is_last)
 
