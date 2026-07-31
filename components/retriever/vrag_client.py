@@ -136,35 +136,24 @@ class VisionRAGClient:
                 "question":          str,
                 "retrieved_docs":    List[Dict],
                 "answer":            str,
-                "raw_stream_preview": List[str],   # first 5 chunks only
             }
         """
         effective_thread_id = thread_id or f"{vrag_file_name}_retrieval_eval"
         url = self._url.format(user_id=user_id)
         payload = self._build_payload(user_id, question, effective_thread_id, vrag_file_name, is_last)
-
-        preview_chunks: List[str] = []
         full_response = ""
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
 
             async with client.stream("POST", url, json=payload) as response:
 
-                logger.info(
-                    "VisionRAG response status: HTTP %d",
-                    response.status_code
-                )
+                logger.info("VisionRAG response status: HTTP %d",response.status_code)
 
                 # Read streamed response properly
                 async for chunk in response.aiter_text():
 
                     if chunk:
                         full_response += chunk
-
-                        # Store first 5 chunks for debugging
-                        if len(preview_chunks) < 5:
-                            preview_chunks.append(chunk)
-
                         logger.info("Received chunk: %s", chunk)
 
                 # Handle non-200 responses
@@ -199,7 +188,6 @@ class VisionRAGClient:
             "question": question,
             "response_text": full_response,
             "response_json": parsed_json,
-            "raw_stream_preview": preview_chunks,
         }
 
 

@@ -3,13 +3,13 @@
 
 ###################################################3
 
-csv_name: delete
-target_chunks: data/target_chunks_sample.json
+csv_name: bl300_testing
+target_chunks: data/merged_testing_dataset.json
 
 # --- Backend Logging  ---
 
 aws_s3_bucket: "vision-rag-temp-bucket"
-delete_s3_csv: True
+delete_s3_csv: False
 
 
 #####################################################
@@ -29,11 +29,11 @@ results_dirs:
 #####################################################
 
 vrag_retriever:
-  user_id: "007"
-  collection_name: BL3200_HAND_HELD_BLOWER
-  query_reformulation: False
-  use_reranking: False
-  use_hybrid: False 
+  user_id: "777"
+  collection_name: summa
+  query_reformulation: True
+  use_reranking: True
+  use_hybrid: True 
   chunk_format: "chunk{id}"
 
 #####################################################
@@ -44,7 +44,7 @@ vrag_client:
   bm25_top_k: 10
   rerank_top_k: 8
   final_top_k: 5
-  memory_enabled: true
+  memory_enabled: False
   timeout: 300
   
 #####################################################

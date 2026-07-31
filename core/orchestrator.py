@@ -57,7 +57,9 @@ class EvaluationOrchestrator:
             use_reranking       = CONFIG["vrag_retriever"]["use_reranking"],
             use_hybrid          = CONFIG["vrag_retriever"]["use_hybrid"],
         )
+        self.questions = self.data_extractor.extract_questions()
 
+        logger.info("Loaded %d questions for evaluation", len(self.questions))
         logger.info("✓ Evaluation Orchestrator ready → %s", self.output_dir)
 
 
@@ -65,13 +67,10 @@ class EvaluationOrchestrator:
 
     async def run(self, vrag_file_name: Optional[str] = None) -> Dict[str, Any]:
         """Run the retrieval phase and return aggregated results."""
+
         logger.info("=" * 60)
         logger.info("Pipeline run started")
-
-        questions = self.data_extractor.extract_questions()
-        logger.info("Loaded %d questions for evaluation", len(questions))
-
-        await self._run_retriever(questions, vrag_file_name=vrag_file_name)
+        await self._run_retriever(self.questions, vrag_file_name=vrag_file_name)
 
 
     # ── Retrieval phase ───────────────────────────────────────────────────────
@@ -320,8 +319,7 @@ class EvaluationOrchestrator:
         
         logger.info(f"Populating results from golden dataset, answers and log: {log_path}")
         log_data  = self._parse_retrieval_log(log_path)
-        questions = self.data_extractor.extract_questions()
-        all_results = self._merge_visionrag_results(questions, log_data)
+        all_results = self._merge_visionrag_results(self.questions, log_data)
 
         if all_results:
             FileHandler.save_json(all_results, self.visionrag_file)

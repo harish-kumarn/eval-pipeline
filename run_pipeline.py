@@ -170,8 +170,8 @@ def main() -> None:
             )
         
         # ### Enrich results from backend logs and recompute metrics
-        # orchestrator.populate_visionrag_results(VRAG_FILE_NAME_CSV)        
-        # orchestrator.compute_retriever_metrics(VISIONRAG_POPULATED_PATH)
+        orchestrator.populate_visionrag_results(VRAG_FILE_NAME_CSV)        
+        orchestrator.compute_retriever_metrics(VISIONRAG_POPULATED_PATH)
         # # orchestrator.compute_generator_metrics(visionrag_populated_path)
 
 
