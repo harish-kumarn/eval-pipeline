@@ -3,7 +3,7 @@
 
 ###################################################3
 
-csv_name: bl300_testing
+csv_name: dummy1
 target_chunks: data/merged_testing_dataset.json
 
 # --- Backend Logging  ---
@@ -30,7 +30,7 @@ results_dirs:
 
 vrag_retriever:
   user_id: "777"
-  collection_name: summa
+  collection_name: dummy1
   query_reformulation: True
   use_reranking: True
   use_hybrid: True 

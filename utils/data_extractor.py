@@ -12,7 +12,7 @@ class DataExtractor:
 
     def __init__(self, target_chunks_file: str):
         self.target_chunks_file = target_chunks_file
-        self.target_chunks: Dict[str, Any] = {}
+        self.target_chunks: Dict[str, Any] = {}  # DICT[key,Any] = {}
         self.question_map: Dict[str, Question] = {}
 
     def load_chunks(self) -> Dict[str, Any]:
