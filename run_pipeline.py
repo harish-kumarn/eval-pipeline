@@ -106,6 +106,9 @@
 
 
 
+
+
+
 import asyncio
 import sys
 from datetime import datetime
@@ -116,6 +119,7 @@ from config.logger import setup_logger
 from core.orchestrator import EvaluationOrchestrator
 from utils.metric_exporter import export_all_metrics
 from utils.support_evals.file_handler import FileHandler, delete_csv_from_s3
+from utils.helper.retrieved_helper import run_evaluation
 
 
 # Initialize Logging
@@ -136,14 +140,14 @@ base_output_dir = Path(CONFIG["results_dirs"]["output_dir"])
 OUTPUT_DIR = base_output_dir / VRAG_FILE_NAME
 GENERATED_ANSWERS_PATH = OUTPUT_DIR / CONFIG["results_dirs"]["generated_answers_file"]
 VISIONRAG_POPULATED_PATH = OUTPUT_DIR / CONFIG["results_dirs"]["vrag_result_json"]
-           
-             
-### 
+
+
+###
 RETRIEVAL_PATH = OUTPUT_DIR / "retriever_metrics.json"
-GENERATION_PATH = OUTPUT_DIR / "generator_metrics.json" 
+GENERATION_PATH = OUTPUT_DIR / "generator_metrics.json"
 VRAG_FILE_NAME_CSV = OUTPUT_DIR / f"{VRAG_FILE_NAME}.csv"
 RESULT_CSV_FILENAME = f"results_{VRAG_FILE_NAME}.csv"
- 
+RESULT_CSV_PATH = OUTPUT_DIR / RESULT_CSV_FILENAME
 
 
 def main() -> None:
@@ -152,27 +156,57 @@ def main() -> None:
 
         ### Initialize Orchestrator
         orchestrator = EvaluationOrchestrator(
-                                input_questions=INPUT_QUESTIONS, 
+                                input_questions=INPUT_QUESTIONS,
                                 output_dir=OUTPUT_DIR,
                                 generated_answers_path=GENERATED_ANSWERS_PATH,
                                 visionrag_populated_path=VISIONRAG_POPULATED_PATH
 
                                 )
 
-        ### Run the pipeline
-        asyncio.run(orchestrator.run(vrag_file_name=VRAG_FILE_NAME))
+        # ### Run the pipeline
+        # asyncio.run(orchestrator.run(vrag_file_name=VRAG_FILE_NAME))
 
-        if CONFIG.get("aws_s3_bucket"):
-            FileHandler.download_eval_file_from_s3(
-                s3_bucket=CONFIG["aws_s3_bucket"],
-                vrag_file_name=VRAG_FILE_NAME,
-                local_dir=OUTPUT_DIR
-            )
-        
+        # if CONFIG.get("aws_s3_bucket"):
+        #     FileHandler.download_eval_file_from_s3(
+        #         s3_bucket=CONFIG["aws_s3_bucket"],
+        #         vrag_file_name=VRAG_FILE_NAME,
+        #         local_dir=OUTPUT_DIR
+        #     )
+
+        # ### Evaluate retriever results against ground truth and save the
+        # ### augmented CSV (adds question_type, tag, answer_chunk_id,
+        # ### predicted, retrieved_position columns).
+        # logger.info("Running retriever evaluation against ground truth")
+        # run_evaluation(
+        #     dataset_path=INPUT_QUESTIONS,
+        #     results_path=VRAG_FILE_NAME_CSV,
+        #     output_path=RESULT_CSV_PATH,
+        # )\
+        #TODO: replace this with config
+        VRAG_FILE_NAME_CSV = "retriver_res/04_08_dummy1_18_54_with_answers.csv"
+
         # ### Enrich results from backend logs and recompute metrics
-        orchestrator.populate_visionrag_results(VRAG_FILE_NAME_CSV)        
+        orchestrator.populate_visionrag_results(Path(VRAG_FILE_NAME_CSV)) #visionragresult.json
+
+
         orchestrator.compute_retriever_metrics(VISIONRAG_POPULATED_PATH)
-        # # orchestrator.compute_generator_metrics(visionrag_populated_path)
+        orchestrator.compute_generator_metrics(VISIONRAG_POPULATED_PATH)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         # # Export per-question metrics (CSV + DB)
@@ -199,7 +233,7 @@ def main() -> None:
         #     logger.info(f"🗑️  Deleted CSV from S3: {VRAG_FILE_NAME}")
 
         # logger.info("✅ Pipeline and Analysis completed successfully")
-    
+
     except Exception:
         logger.exception("❌ Pipeline failed")
         sys.exit(1)

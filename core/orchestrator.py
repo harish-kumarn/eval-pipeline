@@ -61,8 +61,9 @@ class EvaluationOrchestrator:
 
         logger.info("Loaded %d questions for evaluation", len(self.questions))
         logger.info("✓ Evaluation Orchestrator ready → %s", self.output_dir)
+     
 
-
+ 
     # ── Pipeline entry point ──────────────────────────────────────────────────
 
     async def run(self, vrag_file_name: Optional[str] = None) -> Dict[str, Any]:
@@ -112,26 +113,31 @@ class EvaluationOrchestrator:
         """Load retrieval output, run retrieval metrics, and save JSON reports."""
         logger.info("-" * 40)
         logger.info("RETRIEVER METRICS PHASE")
+        
 
-        target_file      = file_path or self.visionrag_file
+        target_file      = file_path or self.visionrag_file # visionragresult.json
+     
+        
         retrieval_results = FileHandler.load_json(target_file)
         logger.info("Loaded %d retrieval results from %s", len(retrieval_results), target_file)
 
         # Inject ground truth where missing
         for d in retrieval_results:
-            if not d.get("ground_truth"):
-                d["ground_truth"] = self.data_extractor.get_ground_truth(d["qid"]) or ""
+            if not d.get("ground_truth"): ## does it necessary
+                d["ground_truth"] = self.data_extractor.get_ground_truth(d["qid"]) or "" 
                 logger.info("Injected ground_truth for qid=%s", d["qid"])
 
         metrics_config = load_metrics_config(CONFIG["metrics_config_path"])
+    
         retrieval_req  = metrics_config.get("retriever_metrics")
         logger.info("Metrics config loaded — retrieval_metrics=%s", retrieval_req)
 
         retrieval_metrics = self.retrieval_calculator.compute(
             retrieval_results,
             k                 = CONFIG["vrag_client"]["final_top_k"],
-            requested_metrics = retrieval_req,
+            requested_metrics = retrieval_req
         )
+        print("retrieval_metrics",retrieval_metrics)
         logger.info(
             "✅ Retrieval metrics — MRR@k=%.3f, Recall@k=%.3f, Precision@k=%.3f, NDCG@k=%.3f",
             retrieval_metrics.mrr_at_k or 0,
@@ -156,13 +162,15 @@ class EvaluationOrchestrator:
         logger.info("GENERATOR METRICS PHASE")
 
         target_file       = file_path or self.visionrag_file
+     # visionragresult.json
+    
         retrieval_results  = FileHandler.load_json(target_file)
         logger.info("Loaded %d retrieval results from %s", len(retrieval_results), target_file)
 
         # Inject ground truth where missing
         for d in retrieval_results:
-            if not d.get("ground_truth"):
-                d["ground_truth"] = self.data_extractor.get_ground_truth(d["qid"]) or ""
+            if not d.get("ground_truth_"):
+                d["ground_truth"] = self.data_extractor.get_ground_truth(d["qid"]) or "" # add a ground_truth in visionragresult.json does it necessary
                 logger.info("Injected ground_truth for qid=%s", d["qid"])
 
         # Build generation dataset
@@ -170,10 +178,10 @@ class EvaluationOrchestrator:
         logger.info(
             "Generation dataset built — %d samples (%d with empty contexts)",
             len(generation_data), empty_context_count,
-        )
+        ) 
 
         metrics_config = load_metrics_config(CONFIG["metrics_config_path"])
-        generation_req = metrics_config.get("generation_metrics")
+        generation_req = metrics_config.get("generation_metrics")  
         logger.info("Metrics config loaded — generation_metrics=%s", generation_req)
 
         tracker    = TokenTracker()
@@ -231,15 +239,23 @@ class EvaluationOrchestrator:
         for d in retrieval_results:
             retrieved_cids = d.get("retrieved_chunk_ids", [])[:CONFIG["vrag_client"]["final_top_k"]]
             contexts: List[str] = []
-
+         
+            # retrieved_cids =  "page_1_chunk_1", "page_1_chunk_2" , "page_2_chunk_2", "page_1_chunk_4", "page_1_chunk_3"
+            
             for cid in retrieved_cids:
-                text = self.data_extractor.get_chunk_text(cid) or ""
-                if not text.strip() and cid == d.get("ground_truth_chunk_id"):
-                    text = f"Ground-truth context retrieved (text missing for {cid})"
-                contexts.append(text)
+                text = self.data_extractor.get_chunk_text(cid) or "" ##suppose failed
+                ## content printed
+                
+                # handle specialcase 
+                if not text.strip() and cid in d.get("ground_truth_chunk_id"): ## "There is no chunk text. but there is groundtruth"
+                    text = f"Ground-truth context retrieved (text missing for {cid})" #Ground truth:page_1_chunk_1 , Chunk text:""
+                contexts.append(text) 
+                
 
-            non_empty = sum(1 for c in contexts if c.strip())
-            if non_empty == 0:
+            non_empty = sum(1 for c in contexts if c)
+            print("non_empty :", non_empty)
+             
+            if non_empty == 0: 
                 logger.warning(
                     "qid=%s: none of the retrieved chunks %s are in target_chunks.json — "
                     "context-dependent metrics will be skipped.",
@@ -256,13 +272,14 @@ class EvaluationOrchestrator:
                 "qid":            d.get("qid"),
                 "question":       d.get("question"),
                 "answer":         d.get("generated_answer"),
-                "ground_truth":   d.get("ground_truth"),
+                "ground_truth":   d.get("ground_truth"),  # both ground_truth and answer_extract is same 
                 "answer_extract": self.data_extractor.get_answer_extract(d.get("qid", "")),
                 "contexts":       contexts,
                 "tag":            d.get("tag"),
             })
 
-        return generation_data, empty_context_count
+            
+        return generation_data, empty_context_count 
 
 
     def _log_and_save_token_usage(self, tracker: TokenTracker) -> Dict[str, Any]:
@@ -319,8 +336,15 @@ class EvaluationOrchestrator:
         
         logger.info(f"Populating results from golden dataset, answers and log: {log_path}")
         log_data  = self._parse_retrieval_log(log_path)
-        all_results = self._merge_visionrag_results(self.questions, log_data)
 
+    
+
+        
+        
+        all_results = self._merge_visionrag_results(self.questions, log_data)
+        
+     
+     
         if all_results:
             FileHandler.save_json(all_results, self.visionrag_file)
             logger.info("Successfully populated %d entries into %s", len(all_results), self.visionrag_file)
@@ -342,33 +366,47 @@ class EvaluationOrchestrator:
 
         log_data: Dict[str, Dict[str, Any]] = {}
 
+
+
         if not log_path.exists():
             logger.info("Log file not found: %s — retrieved chunks will be empty", log_path)
             return log_data
 
         fmt = CONFIG.get("chunk_format", "chunk{id}")
+       
+    
 
         try:
             with open(log_path, "r", encoding="utf-8") as f:
 
-                for row in csv.DictReader(f):
+                reader = csv.DictReader(f)
+                for row in reader:
+
+                
 
                     query = row.get("query", "").strip()
-                    chunks_str = row.get("final_retrieved_chunks", "")
-                    answer = row.get("answer", "").strip()
+                    chunks_str = row.get("final_retrieved_chunks", "") #<class 'str'>
+                   
+                    answer = row.get("generated_answer", "").strip()
+
+
 
                     if not query:
                         continue
 
                     retrieved_chunks = []
 
+
                     if chunks_str:
+                     
                         try:
-                            chunks = ast.literal_eval(chunks_str)
+                            chunks = ast.literal_eval(chunks_str) # <class 'list'>
+                           
+                            
 
                             if isinstance(chunks, list):
                                 retrieved_chunks = [
-                                    fmt.format(id=cid)
+                                    cid if isinstance(cid,str) else fmt.format(id=cid) # cid = 123 fmt = "chunk{id}" , fmt.format(id=cid) , chunk123  : does it make sense 
                                     for cid in chunks
                                 ]
 
@@ -377,11 +415,14 @@ class EvaluationOrchestrator:
                                 "Failed to parse chunks string: %.120s",
                                 chunks_str
                             )
+                    
 
                     log_data[query] = {
                         "retrieved_chunk_ids": retrieved_chunks,
                         "generated_answer": answer,
                     }
+
+              
 
         except Exception as e:
             logger.error(
@@ -390,64 +431,78 @@ class EvaluationOrchestrator:
                 e
             )
 
+
         return log_data
 
 
     def find_best_match(self, question: str, log_data: Dict[str, Dict[str, Any]]):
-        """
-        Find closest matching question from log_data keys.
-        """
+        """Find closest matching question from log_data keys."""
+        question = (question or "").strip()  #  # inside question :  'According to the assembly instructions, what is the correct order for attaching the components to the spray hose?'
+       
+        
+        if not question:
+            print("SKIPPED: empty/blank question text")
+            return {}
 
-        keys = list(log_data.keys())
+        if question in log_data:
+            print("exact_match:", question)
+            return log_data[question]
 
-        # Try exact match first
-        if question.strip() in log_data:
-            return log_data[question.strip()]
-
-        # Fuzzy match
-        matches = get_close_matches(
-            question,
-            keys,
-            n=1,
-            cutoff=0.3
-        )
+        keys = list(log_data.keys()) ## key will be question 
+        matches = get_close_matches(question, keys, n=1, cutoff=0.3)
+        
+        ## Fallback mechanism
 
         if matches:
+            print("fuzzy_match:", question, "->", matches[0])
             return log_data[matches[0]]
 
+        print("NO MATCH FOUND for:", repr(question))
         return {}
 
+# exact_match: According to the assembly instructions, what is the correct order for attaching the components to the spray hose?
+# exact_match: In what sequence should the nozzle, pipe, and lever cock be connected to the spraying line?
+# fuzzy_match: Before starting the equipment, what hardware check must be performed, and what is the correct sequence for assembling the spray attachments? -> According to the assembly instructions, what is the correct order for attaching the components to the spray hose?
+# fuzzy_match: What pre-start safety check should be performed on the equipment's screws? -> In what sequence should the nozzle, pipe, and lever cock be connected to the spraying line?
+# fuzzy_match: What fastener-related inspection must be completed before you begin operating the machinery? -> According to the assembly instructions, what is the correct order for attaching the components to the spray hose?
+# fuzzy_match: Before starting the equipment, what hardware check must be performed, and what is the correct sequence for assembling the spray attachments? -> According to the assembly instructions, what is the correct order for attaching the components to the spray hose?
+# fuzzy_match: What is the specified ratio of gasoline to oil for the blended fuel? -> According to the assembly instructions, what is the correct order for attaching the components to the spray hose?
+# NO MATCH FOUND for: 'Which specific brand of 50:1 2-Cycle Oil is recommended for the fuel premix?'
 
+
+
+    # both the places have the text and metadata have question 
     def _merge_visionrag_results(
         self,
         questions,
         log_data: Dict[str, Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         """Merge golden dataset with retrieval log."""
-
+ 
         results = []
 
         for q in questions:
 
-            matched_data = self.find_best_match(q.text, log_data)
+            matched_data = self.find_best_match(q.text, log_data) 
 
-            results.append({
+            results.append({  ## why not groundtruth not here 
                 "qid": q.qid,
                 "question": q.text,
-                "ground_truth_chunk_id": q.chunk_id,
+                "ground_truth_chunk_id": q.metadata.get("answer_chunk_id", q.chunk_id),
                 "retrieved_chunk_ids":
                     matched_data.get("retrieved_chunk_ids", []),
-
+                ## here itself we can give answer_extract why one new if condition
                 "generated_answer":
                     matched_data.get("generated_answer", ""),
 
                 "tag": q.question_type,
             })
-
+      
         return results
+    
 
 
-
+        
 
 
 

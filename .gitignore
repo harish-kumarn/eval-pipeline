@@ -25,3 +25,4 @@ visionragresult.json
 *.db
 
 vrag_eval
+.env

@@ -12,55 +12,72 @@ class DataExtractor:
 
     def __init__(self, target_chunks_file: str):
         self.target_chunks_file = target_chunks_file
-        self.target_chunks: Dict[str, Any] = {}  # DICT[key,Any] = {}
+        self.target_chunks: Dict[str, Any] = {}   ### Any : any type of value is allowed.
         self.question_map: Dict[str, Question] = {}
 
     def load_chunks(self) -> Dict[str, Any]:
         """Load target chunks from file."""
         self.target_chunks = FileHandler.load_json(self.target_chunks_file)
         logger.info("Loaded %d chunks from %s", len(self.target_chunks), self.target_chunks_file)
+        # Everything from merged_chunk_test stored in self.target_chunk {'chunk1': {'chunk_id': 'page_1_chunk_1', 'content': '# ASSEMBLING\n\nAttach the wide nozzle,\nthe nozzle pipe, the lever\ncock in that order to the\nspray hose, and connect\nthe other end of the hose\nto the spray outlet.', 'chunk_description': 'Instructions for assembling the wide nozzle, nozzle pipe, lever cock, and spray hose, connecting them to the spray outlet.', 'concept_vocabulary': ['wide nozzle', 'nozzle pipe', 'lever cock', 'spray hose', 'spray outlet'], 'images': [{'path': 'page_1_img_1.jpeg', 'association': 'semantic'}], 'questions': {'direct': [{'question': 'According to the assembly instructions, what is the correct order for attaching the components to the spray hose?', 'answer_extract': 'Wide nozzle, nozzle pipe, lever cock', 'tag': 'single', 'answer_chunk_id': ['page_1_chunk_1']}], 'indirect': [{'question': 'In what sequence should the nozzle, pipe, and lever cock be connected to the spraying line?', 'answer_extract': 'Wide nozzle, nozzle pipe, lever cock', 'tag': 'single', 'answer_chunk_id': ['page_1_chunk_1']}, {'question': 'Before starting the equipment, what hardware check must be performed, and what is the correct sequence for assembling the spray attachments?', 'answer_extract': 'Check for loose screws; wide nozzle, nozzle pipe, lever cock', 'tag': 'multi_hop', 'answer_chunk_id': ['page_1_chunk_1', 'page_1_chunk_2']}]}},
+        
         return self.target_chunks
 
     def extract_questions(self) -> List[Question]:
         """Extract all questions from target chunks."""
-        if not self.target_chunks:
+        if not self.target_chunks:   ## self_target_chunk{}
+           
             self.load_chunks()
 
-        questions: List[Question] = []
-        type_counts: Dict[str, int] = {}
 
-        for chunk_id, chunk_data in self.target_chunks.items():
-            questions_section = chunk_data.get("questions", {})
+        questions: List[Question] = [] # question__ :  []  inside Question_class qid,text,chunk_id,question_type,metadata
+        type_counts: Dict[str, int] = {}
+        
+        for chunk_id, chunk_data in self.target_chunks.items(): # chunk_id:  chunk1  |  chunk_data : chunk_id ,content,chunk_description,concept_description,image,question,direct,indirect
+           
+            questions_section = chunk_data.get("questions", {}) # inside direct and indirect 
             
+        
+           
             # Global counter for this chunk
             chunk_question_idx = 0
 
             # Extract questions from direct, indirect, image_based
-            for qtype_str in ["direct", "indirect", "image_based"]:
-                items = questions_section.get(qtype_str, [])
+            for qtype_str in ["direct", "indirect", "image_based"]: ##no image_based
+                items = questions_section.get(qtype_str, []) ## ITEM : [{'question': 'According to the assembly instructions, what is the correct order for attaching the components to the spray hose?', 'answer_extract': 'Wide nozzle, nozzle pipe, lever cock', 'tag': 'single', 'answer_chunk_id': ['page_1_chunk_1']}]
+              
+                
 
                 for question_obj in items:
                     chunk_question_idx += 1
                     prefix = "q"
-                    qid = f"{prefix}{chunk_question_idx}_{chunk_id}"
+                    qid = f"{prefix}{chunk_question_idx}_{chunk_id}" #q1_chunk1
+                 
+                
 
                     raw_question_text = question_obj.get("question", "").strip()
+                   
+            
                     question = Question(
                         qid=qid,
                         text=raw_question_text,
                         chunk_id=chunk_id,
                         question_type=qtype_str,
-                        metadata=question_obj,
+                        metadata=question_obj, # question,answer_extract(ground-truth answer for that question.),tag,answer_chunk_id
                     )
+
 
                     questions.append(question)
                     self.question_map[qid] = question
-                    type_counts[qtype_str] = type_counts.get(qtype_str, 0) + 1
+                    type_counts[qtype_str] = type_counts.get(qtype_str, 0) + 1  # ask question for image based
+                  
+                    
 
         logger.info(
             "Extracted %d questions from %d chunks — breakdown: %s",
             len(questions), len(self.target_chunks), type_counts,
         )
+     
         return questions
 
 
@@ -70,21 +87,29 @@ class DataExtractor:
     def get_question(self, qid: str) -> Optional[Question]:
         """Get question by ID."""
         return self.question_map.get(qid)
+         
 
-    def get_ground_truth(self, qid: str) -> Optional[str]:
+    def get_ground_truth(self, qid: str) -> Optional[str]: ## in the dataset answer_extract is only there do we need get_ground_truth and get_answer_extract
         """Extract ground truth answer for a question."""
         question = self.get_question(qid)
+        print("question:",question)
+    
         if not question:
             return None
 
         metadata = question.metadata
-        for key in ("answer_span", "answer_rationale", "grounding", "ground_truth", "answer_extract", "answer_synthesis"):
+        for key in ("answer_span", "answer_rationale", "grounding", "ground_truth", "answer_extract", "answer_synthesis"): ## only answer_extract is there
             if key in metadata and metadata[key]:
                 val = metadata[key]
-                if isinstance(val, list):
+                print(type(metadata["answer_extract"]))  ## <class 'str'>
+            
+                if isinstance(val, list):                     ## can remove this condition
                     return " ".join(str(v) for v in val)
+                print("val :",val)
+        
                 return str(val)
         return None
+      
 
     def get_answer_extract(self, qid: str) -> Optional[str]:
         """Return the answer_extract field specifically (for answer_correctness ground truth).
@@ -101,15 +126,38 @@ class DataExtractor:
                 return " ".join(str(v) for v in ae)
             return str(ae)
         # Fall back to the generic ground truth lookup
+        print("answer_extract:" , ae)
+        
         return self.get_ground_truth(qid)
 
+
+
     def get_chunk_text(self, chunk_id: str) -> Optional[str]:
-        """Get chunk text by chunk ID."""
-        chunk = self.target_chunks.get(chunk_id)
-        if chunk:
-            return chunk.get("text", "")
+        """Get chunk text by chunk ID (accepts the page-based id, e.g. 'page_1_chunk_1')."""
+
+        for json_key, chunk in self.target_chunks.items(): ## merged_testing_dataset
+           
+            if chunk.get("chunk_id") == chunk_id: ## page_1_chunk_1 = page_1_chunk_1 --> content
+                return chunk.get("content", "") ## can't we initially done this for visionagresult.json
+
         logger.info("Chunk %s not found in target_chunks", chunk_id)
         return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
 
 
 

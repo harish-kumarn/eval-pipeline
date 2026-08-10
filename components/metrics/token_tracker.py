@@ -29,7 +29,7 @@ class TokenTracker:
 
         # current evaluation context
         self._current_metric: Optional[str] = None
-        self._current_qid:    Optional[str] = None
+        self._current_qid:    Optional[str] = None  # _internal attributes.
 
     # --------------------------------------------------
     # Context management

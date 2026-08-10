@@ -29,7 +29,8 @@ def _mean(values: List[float]) -> Optional[float]:
 # ── Retrieval Metrics ─────────────────────────────────────────────────────────
 
 class RetrievalMetricsCalculator(IMetricsCalculator):
-    """Computes MRR, Recall, Precision, and NDCG for retrieval evaluation."""
+    """Computes MRR, Recall, Precision, and NDCG for retrieval evaluation."""   ###  def __init__(self): pass
+
 
     SUPPORTED_METRICS = ("mrr", "recall", "precision", "ndcg")
 
@@ -39,21 +40,28 @@ class RetrievalMetricsCalculator(IMetricsCalculator):
         k: int = 3,
         requested_metrics: Optional[List[str]] = None,
     ) -> RetrievalMetrics:
+       
         if not data:
             return RetrievalMetrics(k=k, total_queries=0)
 
-        active = set(requested_metrics or self.SUPPORTED_METRICS) & set(self.SUPPORTED_METRICS)
+        active = set(requested_metrics or self.SUPPORTED_METRICS) & set(self.SUPPORTED_METRICS) ## requested_metrics = ["recall", "mrr"] then in active only recall,mrr comes 
         accumulators: Dict[str, List[float]] = {m: [] for m in active}
         ranks: List[int] = []
         per_query: List[Dict[str, Any]] = []
 
-        for d in data:
-            gt       = d.get("ground_truth_chunk_id")
-            retrieved = d.get("retrieved_chunk_ids", [])
-            rels      = [r == gt for r in retrieved]
-            rank      = next((i + 1 for i, r in enumerate(rels[:k]) if r), None)
 
-            scores = self._score_query(rank=rank, rels=rels, k=k, active=active)
+
+        for d in data:
+            gt = d.get("ground_truth_chunk_id", [])
+            retrieved = d.get("retrieved_chunk_ids", [])
+
+            rels = [r in gt for r in retrieved] # rels = [True, False, False, False, False] already in predicted
+
+
+            rank = next((i + 1 for i, r in enumerate(rels[:k]) if r), None) ### in dataset we already have the postion
+            # next() Give me the first value. [1] not [1,3]
+            
+            scores = self._score_query(rank=rank, rels=rels, k=k, active=active) # [1] , [True, False, False, False, False]  --->  should want fully not single like predictor, set of metrics
 
             for m, v in scores.items():
                 accumulators[m].append(v)
@@ -81,15 +89,17 @@ class RetrievalMetricsCalculator(IMetricsCalculator):
             total_queries  = len(data),
             per_query_metrics = per_query,
         )
+        
 
     def _score_query(
         self, rank: Optional[int], rels: List[bool], k: int, active: set
     ) -> Dict[str, float]:
         scores = {}
-        if "mrr"       in active: scores["mrr"]       = 1 / rank if rank else 0.0
-        if "recall"    in active: scores["recall"]    = 1.0 if rank else 0.0
-        if "precision" in active: scores["precision"] = sum(rels[:k]) / k
-        if "ndcg"      in active: scores["ndcg"]      = self._ndcg(rels, k)
+        if "mrr"       in active: scores["mrr"]       = 1 / rank if rank else 0.0  ## How high was the FIRST relevant result?
+        if "recall"    in active: scores["recall"]    = 1.0 if rank else 0.0  ## did the relavnt chunks is there change to conventional recall
+        if "precision" in active: scores["precision"] = sum(rels[:k]) / k  # Out of the top k retrieved chunks, how many are relevant?
+        if "ndcg"      in active: scores["ndcg"]      = self._ndcg(rels, k) # Are the relevant results ranked near the top, compared with the best possible ranking?
+        print("Retrieval",scores) # Binary relevance t/f for ndcg
         return scores
 
     def _ndcg(self, rels: List[bool], k: int) -> float:
@@ -110,10 +120,10 @@ GENERATION_METRICS = ("faithfulness", "context_precision", "answer_correctness",
 class GenerationMetricsCalculator(IMetricsCalculator):
     """
     Computes generation metrics via RAGAS:
-      - Faithfulness
-      - Context Precision
-      - Answer Correctness
-      - Answer Relevancy
+      - Faithfulness   ----> Checks whether the generated answer (llm) is supported by the retrieved context(from rag).
+      - Context Precision  ----> Checks whether the retrieved context is relevant to answering the question. ex : bad context precision Fuel mixing ratio is 50:1.Engine maintenance...Safety precautions...
+      - Answer Correctness ----> Checks how closely the generated answer matches the ground-truth answer.
+      - Answer Relevancy ----> Checks whether the generated answer is relevant to the user's question.
     """
 
     _RETRIES = 3
@@ -136,7 +146,7 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         from ragas.metrics import answer_correctness, context_precision, faithfulness
 
         try:
-            from ragas.metrics import answer_relevancy
+            from ragas.metrics import answer_relevancy  ## some ragas have this metrics some other doesn't
         except ImportError:
             try:
                 from ragas.metrics import answer_relevance as answer_relevancy
@@ -161,8 +171,10 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                 logger.warning("Skipping qid=%s — missing required fields (question/answer/ground_truth)", qid)
                 continue
             contexts = [c for c in d.get("contexts", []) if isinstance(c, str) and c.strip()]
-            valid.append({**d, "qid": qid, "contexts": contexts})
-        return valid
+            valid.append({**d, "qid": qid, "contexts": contexts}) ##  append d and qid and context will be overwrittrn Copy every key-value pair from d into a new dictionary.
+            print("valid :",valid)  ## what is the need for overwritten here 
+          
+        return valid  ## if one misses that qid won't be there 
 
     # ── RAGAS execution ───────────────────────────────────────────────────────
 
@@ -192,12 +204,14 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                     embeddings = embeddings_wrapper,
                     run_config = self.RunConfig(timeout=600),
                 )
-                last_df = result.to_pandas()
+                last_df = result.to_pandas() ## convert to dataframe
+              
+            
                 return {
                     m: (None if math.isnan(v := float(last_df[m].iloc[0])) else v)
                     if m in last_df.columns else None
                     for m in metrics
-                }
+                } # how much faithfullness , answer_correctness
             except Exception as e:
                 logger.warning(
                     "qid=%s | attempt %d/%d failed for %s: %s",
@@ -223,7 +237,8 @@ class GenerationMetricsCalculator(IMetricsCalculator):
     ) -> None:
         logger.info("Evaluating [%s] across %d samples", label, len(samples))
 
-        for idx, sample in enumerate(samples, 1):
+        for idx, sample in enumerate(samples, 1): ##generation data ---> sample
+          
             qid = sample["qid"]
             logger.info("[%d/%d] %s — qid=%s", idx, len(samples), label, qid)
 
@@ -269,6 +284,7 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             for m in ("faithfulness", "context_precision")
             if m in all_metrics and m in self._ragas_metrics
         }
+
         if context_metrics:
             context_samples = [d for d in valid if d.get("contexts")]
             if context_samples:
@@ -278,6 +294,8 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                     "samples":  context_samples,
                     "label":    "faithfulness+context_precision",
                 })
+       
+       
 
         # Group 2: answer correctness (uses answer_extract as ground truth)
         if "answer_correctness" in all_metrics:
@@ -307,7 +325,7 @@ class GenerationMetricsCalculator(IMetricsCalculator):
 
     def compute(
         self,
-        data: List[Dict[str, Any]],
+        data: List[Dict[str, Any]],   ## generation_data
         llm_wrapper=None,
         embeddings_wrapper=None,
         requested_metrics: Optional[List[str]] = None,
@@ -317,16 +335,20 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             raise RuntimeError("RAGAS requires llm_wrapper and embeddings_wrapper")
 
         valid = self._validate_samples(data)
+       
         if not valid:
             logger.warning("No valid samples to evaluate — all samples were filtered out.")
             return None
 
         requested = set(requested_metrics) if requested_metrics else None
-        results_by_qid: Dict[str, Dict] = {d["qid"]: {} for d in valid}
 
-        for group in self._build_metric_groups(valid, requested):
+        results_by_qid: Dict[str, Dict] = {d["qid"]: {} for d in valid}
+        print("results_by_qid : ",results_by_qid) ## only taking the qid and store in result_by_id like  q1_chunk1': {}, 'q2_chunk1': {}, 'q3_chunk1': {}, 'q1_chunk2': {},
+        
+
+        for group in self._build_metric_groups(valid, requested): 
             if tracker:
-                tracker.clear_context()
+                tracker.clear_context() ## everything change to none
             self._run_metric_group(
                 samples        = group["samples"],
                 metrics        = group["metrics"],
@@ -337,6 +359,9 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                 label          = group["label"],
                 tracker        = tracker,
             )
+
+            print("Result_by_id =====:",results_by_qid)
+            fknveijvck
 
         return self._aggregate(valid, results_by_qid)
 
@@ -349,6 +374,7 @@ class GenerationMetricsCalculator(IMetricsCalculator):
     ) -> GenerationMetrics:
         accumulators: Dict[str, List[float]] = {m: [] for m in GENERATION_METRICS}
         per_query: List[Dict[str, Any]] = []
+        
 
         for d in valid:
             qid    = d["qid"]
