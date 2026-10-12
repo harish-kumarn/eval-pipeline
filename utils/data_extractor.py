@@ -60,13 +60,12 @@ class DataExtractor:
             
                     question = Question(
                         qid=qid,
-                        text=raw_question_text,
+                        text=raw_question_text, ##---> question
                         chunk_id=chunk_id,
                         question_type=qtype_str,
-                        metadata=question_obj, # question,answer_extract(ground-truth answer for that question.),tag,answer_chunk_id
+                        metadata=question_obj, # question,answer_extract(ground-truth answer for that question.),tag,answer_chunk_id(groundtruth)
                     )
-
-
+                
                     questions.append(question)
                     self.question_map[qid] = question
                     type_counts[qtype_str] = type_counts.get(qtype_str, 0) + 1  # ask question for image based

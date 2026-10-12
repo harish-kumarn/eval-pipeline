@@ -50,6 +50,7 @@ ADDED_COLUMNS_ORDER: list[str] = [
     "question_type",
     "tag",
     "answer_chunk_id",
+    "retrieved_list",
     "predicted",
     "retrieved_position",
 ]
@@ -61,6 +62,7 @@ ADDED_COLUMNS_ORDER: list[str] = [
 def load_dataset(path: Union[str, Path]) -> dict[str, Any]:
     """Load and lightly validate the merged ground-truth JSON dataset."""
     path = Path(path)
+    print(path)
     if not path.exists():
         raise FileNotFoundError(f"Dataset file not found: {path}")
 
@@ -205,6 +207,31 @@ def is_predicted(answer_chunk_ids: Optional[list[Any]], retrieved_chunks: Any) -
     return any(chunk in parsed for chunk in answer_chunk_ids)
 
 
+def get_retrieved_relevance(
+    answer_chunk_ids: Optional[list[Any]], retrieved_chunks: Any
+) -> Optional[list[bool]]:
+    """
+    Per-retrieved-chunk relevance flags, in retrieval order.
+
+    For each id in the retrieved list, True if it appears in the
+    ground-truth answer_chunk_id set, else False. Equivalent to:
+
+        gt_set = set(answer_chunk_ids or [])
+        rels = [rid in gt_set for rid in retrieved]
+
+    Returns None if the retrieved chunks can't be parsed (e.g. missing/NaN
+    cell), and an empty list if the retrieved list is empty. Ground truth
+    being empty/missing still yields a list (all False), since relevance is
+    defined per retrieved item.
+    """
+    parsed = parse_retrieved_chunks(retrieved_chunks)
+    if parsed is None:
+        return None
+
+    gt_set = set(answer_chunk_ids or [])
+    return [rid in gt_set for rid in parsed]
+
+
 def get_chunk_positions(
     answer_chunk_ids: Optional[list[Any]], retrieved_chunks: Any
 ) -> Optional[list[Optional[int]]]:
@@ -221,7 +248,7 @@ def get_chunk_positions(
 
     positions: list[Optional[int]] = []
     for chunk in answer_chunk_ids:
-        positions.append(parsed.index(chunk) + 1 if chunk in parsed else None)
+        positions.append(parsed.index(chunk) + 1 if chunk in parsed else 0)
     return positions
 
 
@@ -245,8 +272,8 @@ def reorder_added_columns(df: pd.DataFrame) -> pd.DataFrame:
 def evaluate(df: pd.DataFrame, question_lookup: dict[str, QuestionMeta]) -> pd.DataFrame:
     """
     Augment the results dataframe with ground-truth and prediction columns:
-    'question_type', 'tag', 'answer_chunk_id', 'predicted', 'retrieved_position'
-    (added as the trailing columns, in that order).
+    'question_type', 'tag', 'answer_chunk_id', 'retrieved_list', 'predicted',
+    'retrieved_position' (added as the trailing columns, in that order).
     """
     df = df.copy()
 
@@ -265,6 +292,13 @@ def evaluate(df: pd.DataFrame, question_lookup: dict[str, QuestionMeta]) -> pd.D
     df["answer_chunk_id"] = metadata.apply(lambda m: m.answer_chunk_id if m else None)
     df["tag"] = metadata.apply(lambda m: m.tag if m else None)
     df["question_type"] = metadata.apply(lambda m: m.question_type if m else None)
+
+    df["retrieved_list"] = df.apply(
+        lambda row: get_retrieved_relevance(
+            row["answer_chunk_id"], row["final_retrieved_chunks"]
+        ),
+        axis=1,
+    )
 
     df["predicted"] = df.apply(
         lambda row: is_predicted(row["answer_chunk_id"], row["final_retrieved_chunks"]),

@@ -45,6 +45,8 @@ class EvaluationOrchestrator:
         self.generated_answers_file   = generated_answers_path
         self.visionrag_file           = visionrag_populated_path
         self.retrieval_metric_path = self.output_dir / CONFIG["results_dirs"]["retriever_metrics"]
+        self.retrieval_metric_path_csv = self.output_dir / CONFIG["results_dirs"]["retriever_metrics_csv"]
+
 
         ### Initialize Metrics Calculators and Vrag Client
         self.data_extractor           = DataExtractor(input_questions)
@@ -83,6 +85,7 @@ class EvaluationOrchestrator:
 
         ### Initializing chat
         self.retriever.reinitialize_chat()
+       
         results = []
 
         for i, q in enumerate(questions, 1):
@@ -109,72 +112,134 @@ class EvaluationOrchestrator:
 
     # ── Metrics phase ─────────────────────────────────────────────────────────
 
+
     def compute_retriever_metrics(self, file_path: Optional[Path] = None) -> Dict[str, Any]:
         """Load retrieval output, run retrieval metrics, and save JSON reports."""
         logger.info("-" * 40)
         logger.info("RETRIEVER METRICS PHASE")
-        
 
-        target_file      = file_path or self.visionrag_file # visionragresult.json
-     
-        
+        target_file = file_path or self.visionrag_file  # visionragresult.json
+
         retrieval_results = FileHandler.load_json(target_file)
         logger.info("Loaded %d retrieval results from %s", len(retrieval_results), target_file)
 
-        # Inject ground truth where missing
-        for d in retrieval_results:
-            if not d.get("ground_truth"): ## does it necessary
-                d["ground_truth"] = self.data_extractor.get_ground_truth(d["qid"]) or "" 
-                logger.info("Injected ground_truth for qid=%s", d["qid"])
+        if not retrieval_results:
+            logger.warning(
+                "No retrieval results found in %s — skipping metrics computation", target_file
+            )
+            return {"retrieval_metrics": {}}
 
         metrics_config = load_metrics_config(CONFIG["metrics_config_path"])
-    
-        retrieval_req  = metrics_config.get("retriever_metrics")
+        k = CONFIG["vrag_client"]["final_top_k"]
+
+        retrieval_req = metrics_config.get("retriever_metrics")
         logger.info("Metrics config loaded — retrieval_metrics=%s", retrieval_req)
 
-        retrieval_metrics = self.retrieval_calculator.compute(
+        all_metrics = list(self.retrieval_calculator.SUPPORTED_METRICS)  # ("mrr","recall","precision","ndcg")
+
+        full_metrics = self.retrieval_calculator.compute(
             retrieval_results,
-            k                 = CONFIG["vrag_client"]["final_top_k"],
-            requested_metrics = retrieval_req
+            k=k,
+            requested_metrics=all_metrics,
         )
-        print("retrieval_metrics",retrieval_metrics)
         logger.info(
             "✅ Retrieval metrics — MRR@k=%.3f, Recall@k=%.3f, Precision@k=%.3f, NDCG@k=%.3f",
-            retrieval_metrics.mrr_at_k or 0,
-            retrieval_metrics.recall_at_k or 0,
-            retrieval_metrics.precision_at_k or 0,
-            retrieval_metrics.ndcg_at_k or 0,
+            full_metrics.mrr_at_k or 0,
+            full_metrics.recall_at_k or 0,
+            full_metrics.precision_at_k or 0,
+            full_metrics.ndcg_at_k or 0,
         )
 
-        
-        retrieval_metrics_dict = retrieval_metrics.to_dict()
+        retrieval_metrics_dict = full_metrics.to_dict()  # save everything — metrics + per_query_metrics
+
         FileHandler.save_json(retrieval_metrics_dict, self.retrieval_metric_path)
         logger.info("Retrieval metrics saved → %s", self.retrieval_metric_path)
+
+        self._save_retrieval_details_csv(
+            retrieval_results=retrieval_results,
+            per_query_metrics=full_metrics.per_query_metrics,
+            metric_fields=all_metrics,
+            csv_path=self.retrieval_metric_path_csv,
+        )
 
         logger.info("=" * 60)
         logger.info("RETRIEVER METRICS PHASE complete")
         return {"retrieval_metrics": retrieval_metrics_dict}
+
+    def _save_retrieval_details_csv(
+        self,
+        retrieval_results: List[Dict[str, Any]],
+        per_query_metrics: List[Dict[str, Any]],
+        metric_fields: List[str],
+        csv_path: Path,
+    ) -> Path:
+        fieldnames = [
+            "qid",
+            "query",
+            "tag",
+            "ground_truth",
+            "vector_chunk_ids",
+            "bm25_chunk_ids",
+            "pre_rerank_chunk_ids",
+            "post_rerank_chunk_ids",
+            "retrieved_chunk_ids",
+            "ground_truth_chunk_id",
+            "retrieved_list",
+            "predicted",
+            "retrieved_position",
+            "rank",
+            *metric_fields,
+        ]
+
+        rows = []
+        for pq in per_query_metrics:
+            row = {
+                "qid":                    pq.get("qid"),
+                "query":                  pq.get("query"),
+                "tag":                    pq.get("tag"),
+                "ground_truth":           pq.get("ground_truth", ""), 
+                "vector_chunk_ids":       "; ".join(map(str, pq.get("vector_chunk_ids") or [])),
+                "bm25_chunk_ids":         "; ".join(map(str, pq.get("bm25_chunk_ids") or [])),
+                "pre_rerank_chunk_ids":   "; ".join(map(str, pq.get("pre_rerank_chunk_ids") or [])),
+                "post_rerank_chunk_ids":  "; ".join(map(str, pq.get("post_rerank_chunk_ids") or [])),
+                #"generated_answer":       pq.get("generated_answer"),
+                "retrieved_chunk_ids":    "; ".join(map(str, pq.get("retrieved_chunk_ids") or [])),
+                "ground_truth_chunk_id":  "; ".join(map(str, pq.get("ground_truth_chunk_id") or [])),
+                "retrieved_list":         "; ".join(map(str, pq.get("retrieved_list") or [])),
+                "predicted":              pq.get("predicted"),
+                "retrieved_position":     "; ".join(map(str, pq.get("retrieved_position") or [])),
+                "rank":                   pq.get("rank"),
+            }
+            for m in metric_fields:
+                row[m] = pq.get(m, "")
+            rows.append(row)
+
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+
+        logger.info("Per-query retrieval details saved → %s", csv_path)
+        return csv_path
+
+
+
 
 
     def compute_generator_metrics(self, file_path: Optional[Path] = None) -> Dict[str, Any]:
         """Load retrieval output, run generation metrics, and save JSON reports."""
         logger.info("-" * 40)
         logger.info("GENERATOR METRICS PHASE")
-
         target_file       = file_path or self.visionrag_file
-     # visionragresult.json
+     
     
         retrieval_results  = FileHandler.load_json(target_file)
         logger.info("Loaded %d retrieval results from %s", len(retrieval_results), target_file)
-
-        # Inject ground truth where missing
-        for d in retrieval_results:
-            if not d.get("ground_truth_"):
-                d["ground_truth"] = self.data_extractor.get_ground_truth(d["qid"]) or "" # add a ground_truth in visionragresult.json does it necessary
-                logger.info("Injected ground_truth for qid=%s", d["qid"])
-
         # Build generation dataset
         generation_data, empty_context_count = self._build_generation_dataset(retrieval_results)
+      
+     
+        
         logger.info(
             "Generation dataset built — %d samples (%d with empty contexts)",
             len(generation_data), empty_context_count,
@@ -242,17 +307,20 @@ class EvaluationOrchestrator:
          
             # retrieved_cids =  "page_1_chunk_1", "page_1_chunk_2" , "page_2_chunk_2", "page_1_chunk_4", "page_1_chunk_3"
             
+     
+
             for cid in retrieved_cids:
-                text = self.data_extractor.get_chunk_text(cid) or "" ##suppose failed
-                ## content printed
-                
-                # handle specialcase 
-                if not text.strip() and cid in d.get("ground_truth_chunk_id"): ## "There is no chunk text. but there is groundtruth"
-                    text = f"Ground-truth context retrieved (text missing for {cid})" #Ground truth:page_1_chunk_1 , Chunk text:""
-                contexts.append(text) 
+                text = self.data_extractor.get_chunk_text(cid) or ""
+                if not text.strip():
+                    if cid in d.get("ground_truth_chunk_id", []):
+                        text = f"Ground-truth context retrieved (text missing for {cid})"
+                    else:
+                        logger.debug("Skipping unresolved chunk %s (not in ground truth)", cid)
+                        continue   # <-- don't append bare empty strings
+                contexts.append(text)
                 
 
-            non_empty = sum(1 for c in contexts if c)
+            non_empty = sum(1 for c in contexts if c) #Ground truth:page_1_chunk_1 , Chunk text:""
             print("non_empty :", non_empty)
              
             if non_empty == 0: 
@@ -272,12 +340,12 @@ class EvaluationOrchestrator:
                 "qid":            d.get("qid"),
                 "question":       d.get("question"),
                 "answer":         d.get("generated_answer"),
-                "ground_truth":   d.get("ground_truth"),  # both ground_truth and answer_extract is same 
-                "answer_extract": self.data_extractor.get_answer_extract(d.get("qid", "")),
+                "ground_truth":   d.get("ground_truth"),  
                 "contexts":       contexts,
                 "tag":            d.get("tag"),
             })
-
+        print("=============", contexts)
+      
             
         return generation_data, empty_context_count 
 
@@ -289,7 +357,7 @@ class EvaluationOrchestrator:
 
         logger.info("Starting RAGAS token calculation")
         if per_q:
-            logger.info("── Token usage per query ──────────────────────────────")
+            logger.info("── Token usage per query ──────────")
             logger.info(
                 "  %-40s  %8s  %10s  %9s  %7s",
                 "Query ID", "Prompt", "Completion", "Embedding", "Total",
@@ -336,15 +404,8 @@ class EvaluationOrchestrator:
         
         logger.info(f"Populating results from golden dataset, answers and log: {log_path}")
         log_data  = self._parse_retrieval_log(log_path)
-
-    
-
-        
-        
         all_results = self._merge_visionrag_results(self.questions, log_data)
-        
-     
-     
+
         if all_results:
             FileHandler.save_json(all_results, self.visionrag_file)
             logger.info("Successfully populated %d entries into %s", len(all_results), self.visionrag_file)
@@ -352,29 +413,51 @@ class EvaluationOrchestrator:
             logger.warning("No entries were constructed for visionrag result.")
 
 
+    def _parse_list(self, value: str, field_name: str, elem_type: type | None = None) -> list:
+        """
+        Parse a string-encoded list (e.g. "['a', 'b']" or "[1, 2, 3]") into an
+        actual Python list. If elem_type is given, only elements matching that
+        type are kept; if elem_type is None, the parsed list is returned as-is.
+        """
+        result: list = []
+        if value:
+            try:
+                parsed = ast.literal_eval(value)
+                if isinstance(parsed, list):
+                    result = [x for x in parsed if isinstance(x, elem_type)] if elem_type else parsed
+            except (ValueError, SyntaxError):
+                logger.info(
+                    "Failed to parse %s string: %.120s",
+                    field_name,
+                    value
+                )
+        return result
+
     def _parse_retrieval_log(self, log_path: Path) -> Dict[str, Dict[str, Any]]:
         """
         Parse CSV log into:
-        
+
         {
             query: {
                 "retrieved_chunk_ids": [...],
-                "generated_answer": "..."
+                "generated_answer": "...",
+                "retrieved_list": [...],
+                "retrieved_position": [...],
+                "vector_chunk_ids": [...],
+                "bm25_chunk_ids": [...],
+                "pre_rerank_chunk_ids": [...],
+                "post_rerank_chunk_ids": [...],
             }
         }
         """
 
         log_data: Dict[str, Dict[str, Any]] = {}
 
-
-
         if not log_path.exists():
             logger.info("Log file not found: %s — retrieved chunks will be empty", log_path)
             return log_data
 
-        fmt = CONFIG.get("chunk_format", "chunk{id}")
-       
-    
+     
 
         try:
             with open(log_path, "r", encoding="utf-8") as f:
@@ -382,64 +465,52 @@ class EvaluationOrchestrator:
                 reader = csv.DictReader(f)
                 for row in reader:
 
-                
-
                     query = row.get("query", "").strip()
-                    chunks_str = row.get("final_retrieved_chunks", "") #<class 'str'>
-                   
                     answer = row.get("generated_answer", "").strip()
 
-
+                    chunks_str = row.get("final_retrieved_chunks", "")
+                    retrieved_list_str = row.get("retrieved_list", "")
+                    retrieved_position_str = row.get("retrieved_position", "")
+                    vector_chunk_ids_str = row.get("vector_chunk_ids", "")
+                    bm25_chunk_ids_str = row.get("bm25_chunk_ids", "")
+                    pre_rerank_chunk_ids_str = row.get("pre_rerank_chunk_ids", "")
+                    post_rerank_chunk_ids_str = row.get("post_rerank_chunk_ids", "")
+                    predicted = row.get("predicted", "")
 
                     if not query:
                         continue
 
-                    retrieved_chunks = []
-
-
-                    if chunks_str:
-                     
-                        try:
-                            chunks = ast.literal_eval(chunks_str) # <class 'list'>
-                           
-                            
-
-                            if isinstance(chunks, list):
-                                retrieved_chunks = [
-                                    cid if isinstance(cid,str) else fmt.format(id=cid) # cid = 123 fmt = "chunk{id}" , fmt.format(id=cid) , chunk123  : does it make sense 
-                                    for cid in chunks
-                                ]
-
-                        except (ValueError, SyntaxError):
-                            logger.info(
-                                "Failed to parse chunks string: %.120s",
-                                chunks_str
-                            )
-                    
+                    retrieved_chunks = self._parse_list(chunks_str, "final_retrieved_chunks", str)
+                    retrieved_list = self._parse_list(retrieved_list_str, "retrieved_list")
+                    retrieved_position = self._parse_list(retrieved_position_str, "retrieved_position", int)  ##check if it needed
+                    vector_chunk_ids = self._parse_list(vector_chunk_ids_str, "vector_chunk_ids", str)
+                    bm25_chunk_ids = self._parse_list(bm25_chunk_ids_str, "bm25_chunk_ids", str)
+                    pre_rerank_chunk_ids = self._parse_list(pre_rerank_chunk_ids_str, "pre_rerank_chunk_ids", str)
+                    post_rerank_chunk_ids = self._parse_list(post_rerank_chunk_ids_str, "post_rerank_chunk_ids", str)
 
                     log_data[query] = {
                         "retrieved_chunk_ids": retrieved_chunks,
                         "generated_answer": answer,
+                        "retrieved_list": retrieved_list,
+                        "predicted": predicted,
+                        "retrieved_position": retrieved_position,
+                        "vector_chunk_ids": vector_chunk_ids,
+                        "bm25_chunk_ids": bm25_chunk_ids,
+                        "pre_rerank_chunk_ids": pre_rerank_chunk_ids,
+                        "post_rerank_chunk_ids": post_rerank_chunk_ids,
+
                     }
 
-              
-
         except Exception as e:
-            logger.error(
-                "Error reading log CSV %s: %s",
-                log_path,
-                e
-            )
-
-
+            logger.error("Failed to parse retrieval log %s: %s", log_path, e)
         return log_data
 
 
-    def find_best_match(self, question: str, log_data: Dict[str, Dict[str, Any]]):
-        """Find closest matching question from log_data keys."""
-        question = (question or "").strip()  #  # inside question :  'According to the assembly instructions, what is the correct order for attaching the components to the spray hose?'
-       
-        
+
+    def find_best_match(self, question, log_data):
+        """Find exact matching question from log_data keys."""
+        question = (question or "").strip()
+
         if not question:
             print("SKIPPED: empty/blank question text")
             return {}
@@ -448,17 +519,9 @@ class EvaluationOrchestrator:
             print("exact_match:", question)
             return log_data[question]
 
-        keys = list(log_data.keys()) ## key will be question 
-        matches = get_close_matches(question, keys, n=1, cutoff=0.3)
-        
-        ## Fallback mechanism
-
-        if matches:
-            print("fuzzy_match:", question, "->", matches[0])
-            return log_data[matches[0]]
-
         print("NO MATCH FOUND for:", repr(question))
         return {}
+
 
 # exact_match: According to the assembly instructions, what is the correct order for attaching the components to the spray hose?
 # exact_match: In what sequence should the nozzle, pipe, and lever cock be connected to the spraying line?
@@ -483,20 +546,27 @@ class EvaluationOrchestrator:
 
         for q in questions:
 
-            matched_data = self.find_best_match(q.text, log_data) 
+            matched_data = self.find_best_match(q.text, log_data)
 
             results.append({  ## why not groundtruth not here 
                 "qid": q.qid,
                 "question": q.text,
+                "tag": q.question_type,
                 "ground_truth_chunk_id": q.metadata.get("answer_chunk_id", q.chunk_id),
+                "ground_truth": q.metadata.get("answer_extract", ""),
                 "retrieved_chunk_ids":
                     matched_data.get("retrieved_chunk_ids", []),
-                ## here itself we can give answer_extract why one new if condition
-                "generated_answer":
-                    matched_data.get("generated_answer", ""),
-
-                "tag": q.question_type,
-            })
+                "retrieved_list" : matched_data.get("retrieved_list",[]),
+                "predicted" : matched_data.get("predicted",[]),
+                "retrieved_position" :matched_data.get("retrieved_position",[]),
+                "vector_chunk_ids": matched_data.get("vector_chunk_ids", []),
+                "bm25_chunk_ids": matched_data.get("bm25_chunk_ids", []),
+                "pre_rerank_chunk_ids": matched_data.get("pre_rerank_chunk_ids", []),
+                "post_rerank_chunk_ids": matched_data.get("post_rerank_chunk_ids", []),
+                "generated_answer":matched_data.get("generated_answer", ""),
+                })
+        print("RESULT====",results)
+    
       
         return results
     

@@ -3,7 +3,7 @@
 
 ###################################################3
 
-csv_name: dummy1
+csv_name: LB30_FUEL_INFO
 target_chunks: data/merged_testing_dataset.json
 
 # --- Backend Logging  ---
@@ -25,12 +25,13 @@ results_dirs:
   vrag_result_json : "visionragresult.json"
   generated_answers_file : "generated_answers.json"
   retriever_metrics : "retriever_metrics.json"
+  retriever_metrics_csv: "retriever_metrics.csv"
 
 #####################################################
 
 vrag_retriever:
   user_id: "777"
-  collection_name: dummy1
+  collection_name: LB30_FUEL_INFO
   query_reformulation: True
   use_reranking: True
   use_hybrid: True 

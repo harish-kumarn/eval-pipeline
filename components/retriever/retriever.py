@@ -93,6 +93,7 @@ class VisionRAGRetriever:
             return response.json()
 
         except requests.exceptions.HTTPError as http_err:
+            logger.info(f"HTTP error occurred: {http_err}")
             return {
                 "status": "error",
                 "message": f"HTTP error occurred: {http_err}",
@@ -100,10 +101,12 @@ class VisionRAGRetriever:
             }
 
         except Exception as err:
+            logger.info(f"Other error occurred: {err}")
             return {
                 "status": "error",
                 "message": f"Other error occurred: {err}"
             }
+        
 
 
 

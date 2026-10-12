@@ -1,0 +1,4 @@
+qid,query,tag,answer_chunk_id,in_bm25,in_vector,in_pre_rerank,in_post_rerank,in_final,failure_point,rank
+q1_chunk1,What is the model name of the Maruyama Back Pack Power Sprayer?,direct,page_1_chunk_1,True,True,True,True,True,Success,1
+q2_chunk1,What is the title of the manual for the MS036?,direct,page_1_chunk_1,True,True,True,True,True,Success,1
+q3_chunk1,What must be done before using the MS036 product?,direct,page_1_chunk_1,True,True,True,True,True,Success,3

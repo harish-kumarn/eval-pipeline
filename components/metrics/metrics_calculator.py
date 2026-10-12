@@ -44,24 +44,26 @@ class RetrievalMetricsCalculator(IMetricsCalculator):
         if not data:
             return RetrievalMetrics(k=k, total_queries=0)
 
+   
+
         active = set(requested_metrics or self.SUPPORTED_METRICS) & set(self.SUPPORTED_METRICS) ## requested_metrics = ["recall", "mrr"] then in active only recall,mrr comes 
         accumulators: Dict[str, List[float]] = {m: [] for m in active}
         ranks: List[int] = []
         per_query: List[Dict[str, Any]] = []
-
-
+      
 
         for d in data:
-            gt = d.get("ground_truth_chunk_id", [])
-            retrieved = d.get("retrieved_chunk_ids", [])
+            gt = d.get("ground_truth_chunk_id", []) or []
+            retrieved = d.get("retrieved_chunk_ids", []) or []
+            retrieved_list = d.get("retrieved_list")
+            if not retrieved_list:                          
+                gt_set = set(gt)
+                retrieved_list = [rid in gt_set for rid in retrieved]
 
-            rels = [r in gt for r in retrieved] # rels = [True, False, False, False, False] already in predicted
-
-
-            rank = next((i + 1 for i, r in enumerate(rels[:k]) if r), None) ### in dataset we already have the postion
-            # next() Give me the first value. [1] not [1,3]
-            
-            scores = self._score_query(rank=rank, rels=rels, k=k, active=active) # [1] , [True, False, False, False, False]  --->  should want fully not single like predictor, set of metrics
+            retrieved_position = d.get("retrieved_position") or []
+          
+            rank = min(retrieved_position) if retrieved_position else 0
+            scores = self._score_query(rank=rank, retrieved_list=retrieved_list, k=k, active=active, gt=gt, retrieved=retrieved) # [1] , [True, False, False, False, False]  --->  should want fully not single like predictor, set of metrics
 
             for m, v in scores.items():
                 accumulators[m].append(v)
@@ -73,11 +75,23 @@ class RetrievalMetricsCalculator(IMetricsCalculator):
                 "qid":                   d.get("qid"),
                 "query":                 d.get("question"),
                 "tag":                   d.get("tag"),
+                "ground_truth":          d.get("ground_truth", ""),
+                "vector_chunk_ids":      d.get("vector_chunk_ids"),
+                "bm25_chunk_ids" :       d.get("bm25_chunk_ids"),
+                "pre_rerank_chunk_ids":  d.get("pre_rerank_chunk_ids"),
+                "post_rerank_chunk_ids": d.get("post_rerank_chunk_ids"),
+                "generated_answer":      d.get("generated_answer"),
+                "predicted":             d.get("predicted"),
+                "retrieved_list":        retrieved_list,          # already computed above in this loop
+                "retrieved_position":    d.get("retrieved_position"),
                 "rank":                  rank,
                 "ground_truth_chunk_id": gt,
                 "retrieved_chunk_ids":   retrieved,
                 **scores,
             })
+
+       
+
 
         return RetrievalMetrics(
             mrr_at_k       = _mean(accumulators.get("mrr", [])),
@@ -92,23 +106,42 @@ class RetrievalMetricsCalculator(IMetricsCalculator):
         
 
     def _score_query(
-        self, rank: Optional[int], rels: List[bool], k: int, active: set
+        self,
+        rank: Optional[int],
+        retrieved_list: List[bool],
+        k: int,
+        active: set,
+        gt: Optional[List[str]] = None,
+        retrieved: Optional[List[str]] = None,
     ) -> Dict[str, float]:
         scores = {}
-        if "mrr"       in active: scores["mrr"]       = 1 / rank if rank else 0.0  ## How high was the FIRST relevant result?
-        if "recall"    in active: scores["recall"]    = 1.0 if rank else 0.0  ## did the relavnt chunks is there change to conventional recall
-        if "precision" in active: scores["precision"] = sum(rels[:k]) / k  # Out of the top k retrieved chunks, how many are relevant?
-        if "ndcg"      in active: scores["ndcg"]      = self._ndcg(rels, k) # Are the relevant results ranked near the top, compared with the best possible ranking?
-        print("Retrieval",scores) # Binary relevance t/f for ndcg
+        n_relevant_total = len(gt) if gt else 0          # total relevant chunks that exist
+        n_retrieved_at_k = min(k, len(retrieved) if retrieved is not None else k)
+
+        if "mrr" in active:
+            scores["mrr"] = 1 / rank if rank else 0.0
+
+        if "recall" in active:
+            # conventional recall@k: relevant chunks retrieved in top-k / total relevant chunks
+            scores["recall"] = (sum(retrieved_list[:k]) / n_relevant_total) if n_relevant_total else 0.0
+
+        if "precision" in active:
+            # conventional precision@k: relevant chunks retrieved in top-k / chunks actually retrieved (up to k)
+            scores["precision"] = (sum(retrieved_list[:k]) / n_retrieved_at_k) if n_retrieved_at_k else 0.0
+
+        if "ndcg" in active:
+            scores["ndcg"] = self._ndcg(retrieved_list, k, n_relevant_total)
+
         return scores
 
-    def _ndcg(self, rels: List[bool], k: int) -> float:
-        dcg  = self._dcg(rels, k)
-        idcg = self._dcg([True] * min(sum(rels), k), k)
+    def _ndcg(self, retrieved_list: List[bool], k: int, n_relevant_total: int) -> float:
+        dcg = self._dcg(retrieved_list, k)
+        ideal_hits = min(n_relevant_total, k)          # best case: all top ideal_hits are relevant
+        idcg = self._dcg([True] * ideal_hits, k)
         return dcg / idcg if idcg else 0.0
 
-    def _dcg(self, rels: List[bool], k: int) -> float:
-        return sum(1 / math.log2(i + 2) for i, r in enumerate(rels[:k]) if r)
+    def _dcg(self, retrieved_list: List[bool], k: int) -> float:
+        return sum(1 / math.log2(i + 2) for i, r in enumerate(retrieved_list[:k]) if r)
 
 
 # ── Generation Metrics (RAGAS) ────────────────────────────────────────────────
@@ -163,18 +196,28 @@ class GenerationMetricsCalculator(IMetricsCalculator):
     # ── Validation ────────────────────────────────────────────────────────────
 
     def _validate_samples(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Filter out samples that are missing required fields."""
         valid = []
         for i, d in enumerate(data):
             qid = d.get("qid") or f"_idx_{i}"
-            if not all(d.get(f, "").strip() for f in ("question", "answer", "ground_truth")):
-                logger.warning("Skipping qid=%s — missing required fields (question/answer/ground_truth)", qid)
-                continue
+            question     = str(d.get("question") or "").strip()
+            answer       = str(d.get("answer") or "").strip()
+            ground_truth = str(d.get("ground_truth") or "").strip()
             contexts = [c for c in d.get("contexts", []) if isinstance(c, str) and c.strip()]
-            valid.append({**d, "qid": qid, "contexts": contexts}) ##  append d and qid and context will be overwrittrn Copy every key-value pair from d into a new dictionary.
-            print("valid :",valid)  ## what is the need for overwritten here 
-          
-        return valid  ## if one misses that qid won't be there 
+
+            missing = [f for f, v in (("question", question), ("answer", answer), ("ground_truth", ground_truth)) if not v]
+            if missing:
+                logger.warning("qid=%s missing fields %s — keeping row, some metrics may be skipped", qid, missing)
+
+            valid.append({
+                **d,
+                "qid": qid,
+                "question": question,
+                "answer": answer,
+                "ground_truth": ground_truth,
+                "contexts": contexts,
+                "_missing_fields": missing,   # downstream can check this
+            })
+        return valid
 
     # ── RAGAS execution ───────────────────────────────────────────────────────
 
@@ -266,17 +309,11 @@ class GenerationMetricsCalculator(IMetricsCalculator):
         valid: List[Dict[str, Any]],
         requested: Optional[set],
     ) -> List[Dict[str, Any]]:
-        """
-        Return a list of metric groups, each specifying which RAGAS metrics
-        to run, the ground-truth field to use, and the eligible samples.
-
-        Groups:
-          1. faithfulness + context_precision  → requires non-empty contexts.
-          2. answer_correctness               → requires a non-empty answer_extract.
-          3. answer_relevancy                 → requires a non-empty answer.
-        """
-        all_metrics = requested or set(GENERATION_METRICS)
+        all_metrics = set(GENERATION_METRICS) if requested is None else set(requested)
         groups: List[Dict[str, Any]] = []
+
+        def has(d, field):
+            return bool(str(d.get(field) or "").strip())
 
         # Group 1: context-dependent metrics
         context_metrics = {
@@ -284,9 +321,11 @@ class GenerationMetricsCalculator(IMetricsCalculator):
             for m in ("faithfulness", "context_precision")
             if m in all_metrics and m in self._ragas_metrics
         }
-
         if context_metrics:
-            context_samples = [d for d in valid if d.get("contexts")]
+            context_samples = [
+                d for d in valid
+                if d.get("contexts") and has(d, "answer") and has(d, "ground_truth")
+            ]
             if context_samples:
                 groups.append({
                     "metrics":  context_metrics,
@@ -294,23 +333,21 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                     "samples":  context_samples,
                     "label":    "faithfulness+context_precision",
                 })
-       
-       
 
-        # Group 2: answer correctness (uses answer_extract as ground truth)
-        if "answer_correctness" in all_metrics:
-            ac_samples = [d for d in valid if d.get("answer_extract", "").strip()]
+        # Group 2: answer correctness
+        if "answer_correctness" in all_metrics and "answer_correctness" in self._ragas_metrics:
+            ac_samples = [d for d in valid if has(d, "ground_truth") and has(d, "answer")]
             if ac_samples:
                 groups.append({
                     "metrics":  {"answer_correctness": self._ragas_metrics["answer_correctness"]},
-                    "gt_field": "answer_extract",
+                    "gt_field": "ground_truth",
                     "samples":  ac_samples,
                     "label":    "answer_correctness",
                 })
 
         # Group 3: answer relevancy
-        if "answer_relevancy" in all_metrics:
-            ar_samples = [d for d in valid if d.get("answer", "").strip()]
+        if "answer_relevancy" in all_metrics and "answer_relevancy" in self._ragas_metrics:
+            ar_samples = [d for d in valid if has(d, "answer") and has(d, "question")]
             if ar_samples:
                 groups.append({
                     "metrics":  {"answer_relevancy": self._ragas_metrics["answer_relevancy"]},
@@ -319,7 +356,8 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                     "label":    "answer_relevancy",
                 })
 
-        return groups
+        return groups   
+
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -360,8 +398,8 @@ class GenerationMetricsCalculator(IMetricsCalculator):
                 tracker        = tracker,
             )
 
-            print("Result_by_id =====:",results_by_qid)
-            fknveijvck
+           
+        
 
         return self._aggregate(valid, results_by_qid)
 
